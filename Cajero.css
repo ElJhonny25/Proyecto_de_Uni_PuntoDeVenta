@@ -1,0 +1,106 @@
+/* Configuración del lienzo general */
+body {
+    margin: 0;
+    height: 100vh;
+    background-color: var(--bg-principal, #e6e6e6);
+    overflow: hidden;
+    position: relative; /* Convierte toda la pantalla en un plano de coordenadas */
+}
+
+/* --- LÍNEAS CONECTORAS DEL DIAGRAMA --- */
+.linea-horizontal {
+    position: absolute;
+    top: 89px;        /* Ubicada exactamente en el centro de los botones superiores */
+    left: 650px;       /* Inicia en el centro del primer botón (50px + 40px) */
+    width: 550px;     /* Distancia exacta que llega hasta el botón del Sol */
+    height: 2px;
+    background-color: #b0b0b0;
+    z-index: 0;
+}
+
+.linea-vertical {
+    position: absolute;
+    top: 90px;        /* Nace de la línea horizontal */
+    left: 1300px;      /* Cae exactamente desde el centro del botón del Sol */
+    bottom: 90px;     /* Baja hasta el centro del último botón inferior */
+    width: 2px;
+    background-color: #b0b0b0;
+    z-index: 0;
+}
+
+/* --- DISEÑO DE BOTONES CUADRADOS --- */
+.square-btn {
+    position: absolute; /* Nos permite ubicarlos por coordenadas (x, y) */
+    width: 80px;
+    height: 80px;
+    background-color: var(--bg-paneles, #4a4a4a);
+    border: none;
+    border-radius: 12px;
+    font-size: 35px;
+    color: white;
+    cursor: pointer;
+    z-index: 1; /* Para que queden encima de las líneas grises */
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    transition: transform 0.2s, background-color 0.2s;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    
+}
+
+.square-btn:hover {
+    transform: scale(1.05);
+    background-color: var(--color-acento, #ff7f2a);
+}
+
+/* COORDENADAS EXACTAS DE LA BARRA SUPERIOR */
+.btn-top-1 { top: 50px; left: 650px; }
+.btn-top-2 { top: 50px; left: 750px; }
+.btn-top-3 { top: 50px; left: 850px; }
+.btn-top-4 { top: 50px; left: 950px; }
+.btn-top-5 { top: 50px; left: 1050px; }
+.btn-top-6 { top: 50px; left: 1150px; }
+
+/* COORDENADAS EXACTAS DE LA COLUMNA DERECHA */
+.btn-bot-1 { bottom: 180px; left: 1265px; }
+.btn-bot-2 { bottom: 50px; left: 1265px; }
+
+/* --- LOGO PERFECTAMENTE CIRCULAR --- */
+.logo-section-caja {
+    position: absolute;
+    top: 100px;  /* Le da espacio a los botones de arriba */
+    left: 100px; /* Lo separa del borde izquierdo */
+    width: 450px; /* ALTO Y ANCHO IGUALES PARA CREAR UN CÍRCULO PERFECTO */
+    height: 450px;
+    z-index: 2;
+}
+
+.logo-disk {
+    width: 100%;
+    height: 100%;
+    background-color: var(--bg-paneles, #4a4a4a);
+    border-radius: 50%; /* Fuerza el corte circular */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden; /* Oculta las puntas de la imagen que sobresalgan del círculo */
+    box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+}
+
+/* CORRECCIÓN PARA QUE LA IMAGEN NO SE DEFORME */
+.uploaded-logo-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Recorta el sobrante manteniendo la proporción original */
+    object-position: center;
+}
+
+/* Textos internos por defecto */
+.logo-text-area {
+    text-align: center;
+    font-size: 32px;
+    font-weight: bold;
+}
+.logo-text-orange { color: var(--color-acento, #ff7f2a); display: block;}
+.logo-text-white { color: white; }

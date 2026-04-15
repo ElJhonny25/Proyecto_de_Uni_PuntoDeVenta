@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Caja - Punto de Venta</title>
+    <link rel="stylesheet" href="D:\TEC\xampp\htdocs\Restaurante\Diseño_Pagina_Principal.css">
+    <link rel="stylesheet" href="D:\TEC\xampp\htdocs\Restaurante\Cajero.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Pacifico&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="linea-horizontal"></div>
+    <div class="linea-vertical"></div>
+
+    <button class="square-btn btn-top-1" title="Comedor" onclick="irA('Comedor.html')">🍽️</button>
+    <button class="square-btn btn-top-2" title="Domicilio" onclick="irA('')">🏠</button>
+    <button class="square-btn btn-top-3" title="Comida Rápida" onclick="irA('')">🍔</button>
+    <button class="square-btn btn-top-4" title="Caja Registradora" onclick="irA('')">📠</button>
+    <button class="square-btn btn-top-5" title="Cerrar Turno" onclick="irA('')">🌜</button>
+    <button class="square-btn btn-top-6" title="Abrir Turno" onclick="irA('')">🌞</button>
+
+    <div class="logo-section-caja">
+        <div class="logo-disk" id="logoDisk">
+            <div id="logoText" class="logo-text-area">
+                <span class="logo-text-orange">Tu Logo</span>
+                <span class="logo-text-white">Aquí</span>
+            </div>
+            <img id="uploadedLogo" class="uploaded-logo-image" src="" alt="Logo del Restaurante" style="display: none;">
+        </div>
+    </div>
+
+    <button class="square-btn btn-bot-1" title="Tienda / Sucursal">🏪</button>
+    <button class="square-btn btn-bot-2" title="Inventario / Personal">🧑‍🍳</button>
+
+    <script>
+        // --- 1. LÓGICA DE NAVEGACIÓN ---
+        function irA(url) {
+            window.location.href = url;
+        }
+
+        // --- 2. CARGAR EL LOGO SIN DEFORMAR ---
+        const logoText = document.getElementById('logoText');
+        const uploadedLogo = document.getElementById('uploadedLogo');
+        const logoDisk = document.getElementById('logoDisk');
+
+        function loadSavedLogo() {
+            const savedLogo = localStorage.getItem('logoRestaurante');
+            if (savedLogo) {
+                uploadedLogo.src = savedLogo;
+                logoText.style.display = 'none';
+                uploadedLogo.style.display = 'block';
+                logoDisk.style.transform = 'none';
+                logoDisk.style.backgroundColor = 'transparent';
+            }
+        }
+
+        // --- 3. CARGAR LOS COLORES PERSONALIZADOS ---
+        const root = document.documentElement;
+        const colorInputs = {
+            'colorBgPrincipal': '--bg-principal', 
+            'colorBgPaneles': '--bg-paneles',
+            'colorAcento': '--color-acento', 
+            'colorBgTeclas': '--bg-teclas'
+        };
+
+        function loadSavedColors() {
+            for (const cssVar of Object.values(colorInputs)) {
+                const savedColor = localStorage.getItem(cssVar);
+                if (savedColor) {
+                    root.style.setProperty(cssVar, savedColor);
+                }
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            loadSavedColors();
+            loadSavedLogo();
+        });
+    </script>
+</body>
+</html>

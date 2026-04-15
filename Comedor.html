@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8"> 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comedor - Punto de Venta</title>
+    <link rel="stylesheet" href="Comedor.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="app-container">
+        <div class="main-area">
+            
+            <div class="top-bar">
+                <button class="action-btn">Abrir<br>mesa</button>
+                <button class="action-btn">Asignar<br>mesa</button>
+                <button class="action-btn">Separar<br>mesa</button>
+                <button class="action-btn" id="btnEditarComedor" onclick="toggleEditMode()">Editar<br>Comedor</button>
+            </div>
+
+            <div class="areas-tabs" id="areasContainer">
+                <button class="tab-btn active" onclick="cambiarArea('Comedor Principal')">Comedor Principal</button>
+            </div>
+
+            <div class="floor-plan-container" id="floorPlan">
+                <div class="area-layer active" id="layer-Comedor Principal">
+                </div>
+            </div>
+
+            <div class="edit-tools" id="editTools">
+                <span style="font-weight: bold;">Modo Edición Activo:</span>
+                <button class="edit-btn" onclick="agregarMesa()">+ Agregar Mesa</button>
+                <button class="edit-btn" onclick="agregarArea()">+ Agregar Nueva Área</button>
+                <button class="edit-btn" onclick="eliminarMesaSeleccionada()" style="background-color: #d9534f;">- Eliminar Mesa</button>
+                <span style="font-size: 12px; margin-left: auto;">(Haz clic en una mesa para seleccionarla y moverla/eliminarla)</span>
+            </div>
+
+        </div>
+
+        <div class="sidebar">
+            <h2>Perfil de Empleado</h2>
+            
+            <div class="profile-pic" id="fotoMesero"></div>
+            
+            <div class="info-group">
+                <label>ID Empleado / NIP</label>
+                <input type="text" id="infoId" readonly style="font-weight:bold; color: #ff7f2a;">
+            </div>
+            <div class="info-group">
+                <label>Nombre</label>
+                <input type="text" id="infoNombre" readonly>
+            </div>
+            <div class="info-group">
+                <label>Cargo</label>
+                <input type="text" id="infoCargo" readonly>
+            </div>
+
+            <div class="spacer"></div>
+
+            <button class="btn-salir" onclick="cerrarSesion()">
+                Salir <span class="arrow-right">➡</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- ELEMENTOS DEL DOM ---
+        const floorPlan = document.getElementById('floorPlan');
+        const editTools = document.getElementById('editTools');
+        const btnEditarComedor = document.getElementById('btnEditarComedor');
+        const areasContainer = document.getElementById('areasContainer');
+        
+        let isEditing = false;
+        let mesaSeleccionada = null; 
+        let draggedMesa = null;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        // --- 1. CARGAR DATOS DEL MESERO (CON FOTO) ---
+        document.addEventListener("DOMContentLoaded", function() {
+            let sesion = localStorage.getItem('meseroActivo');
+            if (sesion) {
+                let mesero = JSON.parse(sesion);
+                // Llenamos los textos
+                document.getElementById('infoId').value = "ID: " + mesero.id + " | NIP: " + mesero.nip;
+                document.getElementById('infoNombre').value = mesero.nombre;
+                document.getElementById('infoCargo').value = mesero.cargo;
+                
+                // Aplicamos la foto si existe en la BD
+                let fotoDiv = document.getElementById('fotoMesero');
+                if(mesero.foto && mesero.foto !== "null" && mesero.foto !== "") {
+                    // Reemplazamos el paisaje por la foto del mesero
+                    fotoDiv.style.backgroundImage = `url(${mesero.foto})`;
+                    fotoDiv.style.backgroundSize = "cover";
+                    fotoDiv.style.backgroundPosition = "center";
+                    fotoDiv.style.border = "3px solid white"; // Un borde blanco para que resalte
+                } else {
+                    // Si no tiene foto, dejamos el paisaje por defecto
+                    fotoDiv.style.backgroundImage = "linear-gradient(to bottom, #87CEEB 60%, #90EE90 40%)";
+                }
+            } else {
+                alert("Por favor inicia sesión primero.");
+                window.location.href = "Pagina_Principal.html";
+            }
+
+            cargarComedor();
+        });
+
+        function cerrarSesion() {
+            if(confirm("¿Estás seguro que deseas cerrar sesión?")) {
+                localStorage.removeItem('meseroActivo'); 
+                window.location.href = "Pagina_Principal.html"; 
+            }
+        }
+
+        // --- 2. FUNCIONES DE GUARDADO Y CARGA CON SQL SERVER ---
+        async function guardarComedor() {
+            let configuracion = { areas: [], mesas: [] };
+            document.querySelectorAll('.tab-btn').forEach(btn => configuracion.areas.push(btn.innerText));
+
+            document.querySelectorAll('.area-layer').forEach(layer => {
+                let nombreArea = layer.id.replace('layer-', '');
+                layer.querySelectorAll('.mesa').forEach(mesa => {
+                    let estado = 'libre';
+                    if(mesa.classList.contains('ocupada')) estado = 'ocupada';
+                    if(mesa.classList.contains('sucia')) estado = 'sucia';
+
+                    configuracion.mesas.push({
+                        nombre: mesa.innerText,
+                        area: nombreArea,
+                        left: mesa.style.left,
+                        top: mesa.style.top,
+                        estado: estado
+                    });
+                });
+            });
+
+            try {
+                // RUTA CORREGIDA: Sin la carpeta Conexion
+                await fetch('guardar_comedor.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(configuracion)
+                });
+            } catch(e) { console.error(e); }
+        }
+
+        async function cargarComedor() {
+            try {
+                // RUTA CORREGIDA: Sin la carpeta Conexion
+                let req = await fetch('cargar_comedor.php');
+                let res = await req.json();
+
+                if (res.status === 'success') {
+                    areasContainer.innerHTML = '';
+                    floorPlan.innerHTML = '';
+
+                    if(res.areas.length === 0) { res.areas = ["Comedor Principal"]; }
+
+                    res.areas.forEach((nombreArea, index) => {
+                        let btn = document.createElement('button');
+                        btn.className = index === 0 ? 'tab-btn active' : 'tab-btn';
+                        btn.innerText = nombreArea;
+                        btn.onclick = function() { cambiarArea(nombreArea); };
+                        areasContainer.appendChild(btn);
+
+                        let layer = document.createElement('div');
+                        layer.className = index === 0 ? 'area-layer active' : 'area-layer';
+                        layer.id = 'layer-' + nombreArea;
+                        floorPlan.appendChild(layer);
+                    });
+
+                    res.mesas.forEach(m => {
+                        let capa = document.getElementById('layer-' + m.area);
+                        if (capa) {
+                            let mesa = document.createElement('div');
+                            mesa.className = `mesa ${m.estado}`;
+                            mesa.style.left = m.left;
+                            mesa.style.top = m.top;
+                            mesa.style.cursor = isEditing ? 'grab' : 'pointer';
+                            mesa.innerText = m.nombre;
+                            capa.appendChild(mesa);
+                        }
+                    });
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        // --- LÓGICA DEL COMEDOR (MODO EDICIÓN) ---
+        function toggleEditMode() {
+            isEditing = !isEditing;
+            if (isEditing) {
+                floorPlan.classList.add('edit-mode');
+                editTools.style.display = 'flex';
+                btnEditarComedor.style.boxShadow = "0 0 0 4px rgba(138, 43, 226, 0.5)";
+            } else {
+                floorPlan.classList.remove('edit-mode');
+                editTools.style.display = 'none';
+                btnEditarComedor.style.boxShadow = "none";
+                quitarSeleccionMesas();
+            }
+            document.querySelectorAll('.mesa').forEach(mesa => mesa.style.cursor = isEditing ? 'grab' : 'pointer');
+        }
+
+        function cambiarArea(nombreArea) {
+            quitarSeleccionMesas(); 
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                if(btn.innerText === nombreArea) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+            document.querySelectorAll('.area-layer').forEach(layer => {
+                if(layer.id === 'layer-' + nombreArea) layer.classList.add('active');
+                else layer.classList.remove('active');
+            });
+        }
+
+        function agregarArea() {
+            const nombreArea = prompt("Ingresa el nombre de la nueva área:");
+            if (nombreArea && nombreArea.trim() !== "") {
+                if(document.getElementById('layer-' + nombreArea)) return alert("Esta área ya existe.");
+                
+                const nuevaTab = document.createElement('button');
+                nuevaTab.classList.add('tab-btn');
+                nuevaTab.innerText = nombreArea;
+                nuevaTab.onclick = function() { cambiarArea(nombreArea); };
+                areasContainer.appendChild(nuevaTab);
+
+                const nuevaLayer = document.createElement('div');
+                nuevaLayer.classList.add('area-layer');
+                nuevaLayer.id = 'layer-' + nombreArea;
+                floorPlan.appendChild(nuevaLayer);
+
+                cambiarArea(nombreArea);
+                guardarComedor(); 
+            }
+        }
+
+        function agregarMesa() {
+            const capaActiva = document.querySelector('.area-layer.active');
+            if(!capaActiva) return alert("Selecciona un área primero."); 
+
+            let numeroMesa = prompt("Ingresa el número o identificador de la mesa:");
+            if (numeroMesa === null || numeroMesa.trim() === "") return;
+            numeroMesa = numeroMesa.trim();
+
+            let existe = false;
+            capaActiva.querySelectorAll('.mesa').forEach(m => { if(m.innerText === numeroMesa) existe = true; });
+            if(existe) return alert("Ya existe una mesa con ese identificador."); 
+
+            const nuevaMesa = document.createElement('div');
+            nuevaMesa.classList.add('mesa', 'libre'); 
+            nuevaMesa.style.left = '200px';
+            nuevaMesa.style.top = '200px';
+            nuevaMesa.style.cursor = isEditing ? 'grab' : 'pointer';
+            nuevaMesa.innerText = numeroMesa;
+            
+            capaActiva.appendChild(nuevaMesa);
+            quitarSeleccionMesas();
+            nuevaMesa.classList.add('selected');
+            mesaSeleccionada = nuevaMesa;
+            guardarComedor(); 
+        }
+
+        function eliminarMesaSeleccionada() {
+            if (mesaSeleccionada) {
+                if(confirm("¿Seguro de eliminar la mesa " + mesaSeleccionada.innerText + "?")) {
+                    mesaSeleccionada.remove(); 
+                    mesaSeleccionada = null;   
+                    guardarComedor(); 
+                }
+            } else {
+                alert("Haz clic en una mesa para seleccionarla primero.");
+            }
+        }
+
+        function quitarSeleccionMesas() {
+            document.querySelectorAll('.mesa').forEach(m => m.classList.remove('selected'));
+            mesaSeleccionada = null;
+        }
+
+        // --- ARRASTRE DE MESAS ---
+        floorPlan.addEventListener('mousedown', function(e) {
+            if (!isEditing) return; 
+            if (e.target.classList.contains('mesa')) {
+                quitarSeleccionMesas(); 
+                draggedMesa = e.target;
+                draggedMesa.classList.add('selected'); 
+                mesaSeleccionada = draggedMesa;        
+                draggedMesa.style.cursor = 'grabbing';
+                const rect = draggedMesa.getBoundingClientRect();
+                offsetX = e.clientX - rect.left;
+                offsetY = e.clientY - rect.top;
+            } else if (e.target.classList.contains('area-layer') || e.target.classList.contains('floor-plan-container')) {
+                quitarSeleccionMesas(); 
+            }
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (draggedMesa && isEditing) {
+                const planRect = floorPlan.getBoundingClientRect();
+                let newX = e.clientX - planRect.left - offsetX;
+                let newY = e.clientY - planRect.top - offsetY;
+
+                const maxLeft = planRect.width - draggedMesa.offsetWidth;
+                const maxTop = planRect.height - draggedMesa.offsetHeight;
+                
+                newX = Math.max(0, Math.min(newX, maxLeft));
+                newY = Math.max(0, Math.min(newY, maxTop));
+
+                draggedMesa.style.left = newX + 'px';
+                draggedMesa.style.top = newY + 'px';
+            }
+        });
+
+        document.addEventListener('mouseup', function() {
+            if (draggedMesa) {
+                draggedMesa.style.cursor = isEditing ? 'grab' : 'pointer';
+                draggedMesa = null;
+                guardarComedor(); 
+            }
+        });
+    </script>
+</body>
+</html>
