@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Menú - SOFTWADZ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --color-texto: #ffffff; --color-acento: #ff7f2a; }
+        
+        body {
+            color: var(--color-texto); background-color: var(--bg-principal, #1a1e24); 
+            background-size: cover; background-position: center; background-attachment: fixed;
+            margin: 0; font-family: 'Montserrat', sans-serif; min-height: 100vh;
+            display: flex; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;
+        }
+
+        .form-container {
+            background: rgba(20, 20, 20, 0.6); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 35px; padding: 40px 35px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6), inset 0 0 15px rgba(255,255,255,0.05);
+            width: 100%; max-width: 400px; display: flex; flex-direction: column; box-sizing: border-box;
+        }
+
+        h2 {
+            text-align: center; margin-top: 0; margin-bottom: 25px; font-weight: 700;
+            font-size: 22px; color: #ffffff; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px;
+        }
+        
+        .form-group { margin-bottom: 20px; width: 100%; }
+        
+        .form-group label { 
+            display: block; margin-bottom: 8px; font-size: 11px; font-weight: 500;
+            color: rgba(255,255,255,0.6); letter-spacing: 1px; text-transform: uppercase;
+        }
+        
+        .form-input {
+            width: 100%; padding: 15px; border-radius: 15px; background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.2); color: var(--color-texto);
+            box-sizing: border-box; font-family: 'Montserrat', sans-serif; font-size: 15px;
+            outline: none; box-shadow: inset 0 2px 5px rgba(0,0,0,0.2); transition: border-color 0.3s;
+        }
+
+        .form-input:focus { border-color: var(--color-acento); }
+        .form-input::placeholder { color: rgba(255, 255, 255, 0.3); }
+        select.form-input option { background-color: #1a1e24; color: #ffffff; }
+
+        .botones-container { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+
+        .btn {
+            width: 100%; padding: 15px; border: none; border-radius: 25px; font-weight: bold; 
+            font-size: 15px; cursor: pointer; transition: all 0.3s ease; font-family: 'Montserrat', sans-serif;
+            text-align: center; text-decoration: none; box-sizing: border-box;
+        }
+
+        .btn-guardar { background-color: var(--color-acento); color: #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .btn-guardar:hover { filter: brightness(1.1); transform: translateY(-2px); }
+        .btn-volver { background-color: transparent; color: var(--color-texto); border: 1px solid rgba(255,255,255,0.3); }
+        .btn-volver:hover { background-color: rgba(255,255,255,0.1); }
+    </style>
+</head>
+<body>
+
+    <div class="form-container">
+        <h2>Agregar al Menú</h2>
+
+        <div class="form-group">
+            <label>Nombre del Platillo o Bebida *</label>
+            <input type="text" id="nombreProducto" class="form-input" placeholder="Ej. Hamburguesa Doble">
+        </div>
+
+        <div class="form-group">
+            <label>Precio al Público ($) *</label>
+            <input type="number" id="precioProducto" class="form-input" placeholder="Ej. 120.50" step="0.01" min="1">
+        </div>
+
+        <div class="form-group">
+            <label>Categoría *</label>
+            <select id="categoriaProducto" class="form-input">
+                <option value="1">Entradas</option>
+                <option value="2">Cortes Y Carne</option>
+                <option value="3">Mariscos</option>
+                <option value="4">Bebidas</option>
+                <option value="5">Postres</option>
+                <option value="6">Sushi</option> 
+            </select>
+        </div>
+
+        <div class="botones-container">
+            <button class="btn btn-guardar" onclick="guardarProducto()">Guardar Producto</button>
+            <a href="AdminDashboard.html" class="btn btn-volver">Volver al Inicio</a>
+        </div>
+    </div>
+
+    <script>
+        // Cargar Diseño Global
+        function cargarDiseno() {
+            const root = document.documentElement;
+            const colorTexto = localStorage.getItem('--color-texto');
+            const colorAcento = localStorage.getItem('--color-acento');
+            if (colorTexto) root.style.setProperty('--color-texto', colorTexto);
+            if (colorAcento) root.style.setProperty('--color-acento', colorAcento);
+            const savedBg = localStorage.getItem('bgRestaurante');
+            if (savedBg) document.body.style.backgroundImage = `url(${savedBg})`;
+        }
+        cargarDiseno();
+
+        // Guardar en BD
+        async function guardarProducto() {
+            let nombre = document.getElementById('nombreProducto').value;
+            let precio = document.getElementById('precioProducto').value;
+            let id_categoria = document.getElementById('categoriaProducto').value;
+
+            if (!nombre || !precio || precio <= 0) {
+                alert("Por favor ingresa un nombre y un precio válido mayor a 0.");
+                return;
+            }
+
+            let datos = { nombre: nombre, precio: precio, id_categoria: id_categoria };
+
+            try {
+                let respuesta = await fetch('guardar_producto.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(datos)
+                });
+                
+                let resultado = await respuesta.json();
+                if (resultado.status === 'success') {
+                    alert(resultado.message);
+                    document.getElementById('nombreProducto').value = '';
+                    document.getElementById('precioProducto').value = '';
+                    document.getElementById('nombreProducto').focus();
+                } else {
+                    alert(resultado.message);
+                }
+            } catch (error) {
+                alert("Error al conectar con la base de datos.");
+            }
+        }
+    </script>
+</body>
+</html>

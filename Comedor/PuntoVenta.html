@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Punto de Venta - SOFTWADZ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --color-texto: #ffffff; --color-acento: #ff7f2a; --bg-principal: #1a1e24; }
+        
+        body {
+            margin: 0; font-family: 'Montserrat', sans-serif; color: var(--color-texto);
+            background-color: var(--bg-principal); background-size: cover; background-position: center; 
+            height: 100vh; overflow: hidden; display: flex; flex-direction: column;
+        }
+
+        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); z-index: -1; }
+
+        .top-bar {
+            display: flex; justify-content: space-between; align-items: center; padding: 15px 30px;
+            background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px);
+            border-bottom: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .info-mesa { font-size: 24px; font-weight: bold; color: var(--color-acento); letter-spacing: 2px;}
+        .btn-volver {
+            background: rgba(0,0,0,0.5); color: white; border: 1px solid rgba(255,255,255,0.3);
+            padding: 10px 20px; border-radius: 10px; cursor: pointer; transition: 0.3s; font-weight: bold;
+        }
+        .btn-volver:hover { background: #dc3545; border-color: #dc3545; }
+
+        .pos-container { display: flex; flex: 1; overflow: hidden; padding: 15px; gap: 15px; }
+
+        .categorias-panel {
+            width: 20%; background: rgba(20,20,20,0.6); backdrop-filter: blur(15px);
+            border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); padding: 15px;
+            display: flex; flex-direction: column; gap: 10px; overflow-y: auto;
+        }
+        .btn-categoria {
+            background: rgba(255,255,255,0.05); color: white; border: 1px solid rgba(255,255,255,0.1);
+            padding: 15px; border-radius: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; text-align: left;
+        }
+        .btn-categoria:hover, .btn-categoria.active { background: var(--color-acento); transform: translateX(5px); border-color: var(--color-acento);}
+
+        .productos-panel {
+            width: 50%; background: rgba(255,255,255,0.02); backdrop-filter: blur(10px);
+            border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); padding: 20px;
+            display: flex; flex-direction: column; gap: 15px;
+        }
+
+        .control-cantidad-superior {
+            background: rgba(0,0,0,0.5); border-radius: 15px; padding: 10px 20px;
+            display: flex; align-items: center; justify-content: center; gap: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
+        }
+        .btn-circulo {
+            width: 40px; height: 40px; border-radius: 50%; border: none; font-size: 24px; font-weight: bold;
+            cursor: pointer; background: rgba(255,255,255,0.1); color: white; transition: 0.2s;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .btn-circulo:active { background: var(--color-acento); transform: scale(0.9); }
+        .lbl-cantidad { font-size: 22px; font-weight: bold; min-width: 40px; text-align: center; color: var(--color-acento); }
+
+        .grid-productos {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 15px; overflow-y: auto; align-content: start; flex: 1;
+        }
+
+        .btn-producto {
+            background: rgba(0,0,0,0.5); border: 2px solid transparent; border-radius: 15px;
+            padding: 15px 10px; color: white; cursor: pointer; transition: 0.2s;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+            height: 120px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .btn-producto:hover { border-color: var(--color-acento); transform: scale(1.05); }
+        .btn-producto:active { transform: scale(0.95); }
+        .precio-badge { background: var(--color-acento); padding: 3px 8px; border-radius: 8px; font-size: 12px; font-weight: bold; margin-top: 8px; }
+
+        .ticket-panel {
+            width: 30%; background: rgba(255,255,255,0.95); color: #000;
+            border-radius: 20px; display: flex; flex-direction: column; overflow: hidden;
+            box-shadow: -10px 0 30px rgba(0,0,0,0.5); font-family: monospace; font-size: 14px;
+        }
+        .ticket-header { background: #eee; padding: 15px; text-align: center; border-bottom: 2px dashed #ccc; font-weight: bold;}
+        .ticket-body { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        
+        .item-comanda { 
+            display: flex; align-items: center; justify-content: space-between; 
+            border-bottom: 1px solid #ddd; padding-bottom: 8px; gap: 8px;
+        }
+        .item-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+        .item-nombre { font-weight: bold; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .item-precio-unitario { font-size: 11px; color: #666; }
+        
+        .item-controles { display: flex; align-items: center; gap: 5px; background: #eee; border-radius: 6px; padding: 3px; }
+        .btn-mini { 
+            width: 24px; height: 24px; border: 1px solid #ccc; border-radius: 4px; 
+            background: #fff; cursor: pointer; font-weight: bold; display: flex; justify-content: center; align-items: center;
+        }
+        .btn-mini:active { background: #ddd; }
+        
+        .item-total { width: 60px; text-align: right; font-weight: bold; font-size: 14px;}
+
+        .btn-eliminar-item {
+            background: #ff4d4d; color: white; border: none; border-radius: 5px;
+            width: 26px; height: 26px; font-weight: bold; cursor: pointer;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .btn-eliminar-item:hover { filter: brightness(1.2); }
+
+        .ticket-total { background: #222; color: white; padding: 20px; font-size: 22px; text-align: right; font-weight: bold; }
+        
+        .ticket-actions { display: flex; flex-direction: column; padding: 10px; gap: 8px; background: #eee;}
+        .btn-accion { padding: 15px; border: none; border-radius: 10px; font-weight: bold; font-size: 14px; cursor: pointer; transition: 0.2s; color: white;}
+        .btn-cocina { background-color: #dc3545; } 
+        .btn-accion:hover { filter: brightness(1.1); transform: translateY(-1px);}
+
+    </style>
+</head>
+<body>
+    <div class="overlay"></div>
+
+    <div class="top-bar">
+        <div class="info-mesa" id="tituloMesa">MESA: --</div>
+        <div style="font-weight: 500;" id="nombreMesero">Mesero: --</div>
+        <button class="btn-volver" onclick="volverComedor()">⬅ Volver al Comedor sin Guardar</button>
+    </div>
+
+    <div class="pos-container">
+        <div class="categorias-panel" id="listaCategorias">
+            <div style="text-align: center; color: #aaa; margin-top: 20px;">Cargando...</div>
+        </div>
+
+        <div class="productos-panel">
+            <div class="control-cantidad-superior">
+                <span style="font-weight: 500; color: rgba(255,255,255,0.7);">Cantidad a agregar:</span>
+                <button class="btn-circulo" onclick="cambiarMultiplicador(-1)">-</button>
+                <span class="lbl-cantidad" id="multiplicadorValor">1</span>
+                <button class="btn-circulo" onclick="cambiarMultiplicador(1)">+</button>
+            </div>
+            <div class="grid-productos" id="listaProductos"></div>
+        </div>
+
+        <div class="ticket-panel">
+            <div class="ticket-header">
+                <h3 style="margin:0 0 5px 0;">SOFTWADZ POS</h3>
+                <span id="ticketMesa" style="font-size: 16px;">Mesa --</span><br>
+                <span id="ticketFecha" style="font-size: 11px; color: #666;">--/--/---- --:--</span>
+            </div>
+            
+            <div class="ticket-body" id="ticketItems"></div>
+            <div class="ticket-total" id="ticketTotal">TOTAL: $0.00</div>
+
+            <div class="ticket-actions">
+                <button class="btn-accion btn-cocina" onclick="enviarACocina()">🔥 Enviar a Cocina (Guardar)</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let menuCompleto = [];
+        let cuentaActual = [];
+        let idCategoriaActiva = null;
+        let cantidadGlobal = 1;
+        let nombreMesaActual = "";
+
+        document.addEventListener("DOMContentLoaded", function() {
+            const root = document.documentElement;
+            const colorAcento = localStorage.getItem('--color-acento');
+            if (colorAcento) root.style.setProperty('--color-acento', colorAcento);
+            const savedBg = localStorage.getItem('bgRestaurante');
+            if (savedBg) document.body.style.backgroundImage = `url(${savedBg})`;
+
+            let mesero = JSON.parse(localStorage.getItem('meseroActivo'));
+            if(mesero) document.getElementById('nombreMesero').innerText = "Mesero: " + mesero.nombre;
+
+            let mesa = JSON.parse(localStorage.getItem('mesaActiva'));
+            if(mesa) {
+                nombreMesaActual = mesa.nombre;
+                document.getElementById('tituloMesa').innerText = "MESA: " + mesa.nombre;
+                document.getElementById('ticketMesa').innerText = "Mesa " + mesa.nombre;
+
+                // NUEVO: Cargar si la mesa ya tenía productos agregados antes
+                let cuentaGuardada = localStorage.getItem('cuenta_' + mesa.nombre);
+                if (cuentaGuardada) {
+                    cuentaActual = JSON.parse(cuentaGuardada);
+                    actualizarTicketUI();
+                }
+
+            } else {
+                alert("Error: No se seleccionó ninguna mesa.");
+                window.location.href = "Comedor.html";
+                return;
+            }
+
+            let hoy = new Date();
+            document.getElementById('ticketFecha').innerText = hoy.toLocaleDateString() + " " + hoy.toLocaleTimeString();
+
+            cargarMenuDeBD();
+        });
+
+        function volverComedor() { window.location.href = "Comedor.html"; }
+
+        function cambiarMultiplicador(cambio) {
+            cantidadGlobal += cambio;
+            if (cantidadGlobal < 1) cantidadGlobal = 1; 
+            if (cantidadGlobal > 50) cantidadGlobal = 50; 
+            document.getElementById('multiplicadorValor').innerText = cantidadGlobal;
+        }
+
+        async function cargarMenuDeBD() {
+            try {
+                let req = await fetch('cargar_menu.php');
+                let res = await req.json();
+                if(res.status === 'success') {
+                    menuCompleto = res.productos; 
+                    dibujarCategorias(res.categorias);
+                }
+            } catch (e) { alert("Error al cargar el menú."); }
+        }
+
+        function dibujarCategorias(categorias) {
+            const panel = document.getElementById('listaCategorias');
+            panel.innerHTML = '';
+            let btnTodos = document.createElement('button');
+            btnTodos.className = 'btn-categoria active';
+            btnTodos.innerText = "⭐ Mostrar Todo";
+            btnTodos.onclick = () => {
+                document.querySelectorAll('.btn-categoria').forEach(b => b.classList.remove('active'));
+                btnTodos.classList.add('active'); idCategoriaActiva = null; dibujarProductos();
+            };
+            panel.appendChild(btnTodos);
+
+            categorias.forEach(cat => {
+                let btn = document.createElement('button');
+                btn.className = 'btn-categoria'; btn.innerText = cat.NOMBRE;
+                btn.onclick = () => {
+                    document.querySelectorAll('.btn-categoria').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active'); idCategoriaActiva = cat.ID_CATEGORIA; dibujarProductos();
+                };
+                panel.appendChild(btn);
+            });
+            dibujarProductos();
+        }
+
+        function dibujarProductos() {
+            const panel = document.getElementById('listaProductos');
+            panel.innerHTML = '';
+            let productosFiltrados = menuCompleto;
+            if (idCategoriaActiva !== null) productosFiltrados = menuCompleto.filter(p => p.ID_CATEGORIA == idCategoriaActiva);
+            
+            if (productosFiltrados.length === 0) return;
+
+            productosFiltrados.forEach(prod => {
+                let btn = document.createElement('div');
+                btn.className = 'btn-producto';
+                btn.innerHTML = `<span style="font-size: 13px; font-weight:bold;">${prod.NOMBRE}</span><div class="precio-badge">$ ${parseFloat(prod.PRECIO).toFixed(2)}</div>`;
+                btn.onclick = () => agregarAlTicket(prod, cantidadGlobal);
+                panel.appendChild(btn);
+            });
+        }
+
+        function agregarAlTicket(producto, cantidadAgregar) {
+            let itemExistente = cuentaActual.find(item => item.id == producto.ID_PRODUCTO);
+            if (itemExistente) {
+                itemExistente.cantidad += cantidadAgregar;
+                itemExistente.subtotal = itemExistente.cantidad * parseFloat(producto.PRECIO);
+            } else {
+                cuentaActual.push({
+                    id: producto.ID_PRODUCTO, nombre: producto.NOMBRE,
+                    precioUnitario: parseFloat(producto.PRECIO), cantidad: cantidadAgregar,
+                    subtotal: cantidadAgregar * parseFloat(producto.PRECIO)
+                });
+            }
+            cantidadGlobal = 1; document.getElementById('multiplicadorValor').innerText = cantidadGlobal;
+            actualizarTicketUI();
+        }
+
+        function ajustarCantidad(idProducto, cambio) {
+            let itemIndex = cuentaActual.findIndex(item => item.id == idProducto);
+            if (itemIndex > -1) {
+                cuentaActual[itemIndex].cantidad += cambio;
+                if (cuentaActual[itemIndex].cantidad <= 0) cuentaActual.splice(itemIndex, 1);
+                else cuentaActual[itemIndex].subtotal = cuentaActual[itemIndex].cantidad * cuentaActual[itemIndex].precioUnitario;
+                actualizarTicketUI();
+            }
+        }
+
+        function quitarDelTicket(idProducto) {
+            cuentaActual = cuentaActual.filter(item => item.id != idProducto);
+            actualizarTicketUI();
+        }
+
+        function actualizarTicketUI() {
+            const panel = document.getElementById('ticketItems');
+            panel.innerHTML = ''; let totalVenta = 0;
+
+            if(cuentaActual.length === 0) {
+                panel.innerHTML = '<div style="text-align:center; color:#aaa; margin-top:20px;">Ticket vacío</div>';
+            } else {
+                cuentaActual.forEach(item => {
+                    totalVenta += item.subtotal;
+                    let div = document.createElement('div'); div.className = 'item-comanda';
+                    div.innerHTML = `
+                        <div class="item-info"><span class="item-nombre">${item.nombre}</span><span class="item-precio-unitario">P.U: $${item.precioUnitario.toFixed(2)}</span></div>
+                        <div class="item-controles"><button class="btn-mini" onclick="ajustarCantidad('${item.id}', -1)">-</button><span style="font-weight:bold; min-width: 18px; text-align:center;">${item.cantidad}</span><button class="btn-mini" onclick="ajustarCantidad('${item.id}', 1)">+</button></div>
+                        <span class="item-total">$${item.subtotal.toFixed(2)}</span>
+                        <button class="btn-eliminar-item" onclick="quitarDelTicket('${item.id}')">X</button>
+                    `;
+                    panel.appendChild(div);
+                });
+            }
+            document.getElementById('ticketTotal').innerText = `TOTAL: $${totalVenta.toFixed(2)}`;
+        }
+
+        // --- NUEVO: LÓGICA DE ENVIAR A COCINA ---
+        function enviarACocina() {
+            if(cuentaActual.length === 0) { alert("Agrega productos al ticket antes de comandar."); return; }
+            
+            // 1. Guardamos la cuenta vinculada a esta mesa específica en memoria
+            localStorage.setItem('cuenta_' + nombreMesaActual, JSON.stringify(cuentaActual));
+
+            // 2. Le dejamos un "mensaje" al Comedor para que ponga la mesa en rojo (ocupada)
+            localStorage.setItem('comandoMesa', JSON.stringify({ nombre: nombreMesaActual, estado: 'ocupada' }));
+
+            window.location.href = "Comedor.html";
+        }
+    </script>
+</body>
+</html>

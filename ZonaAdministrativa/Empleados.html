@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Personal - SOFTWADZ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* --- VARIABLES GLOBALES --- */
+        :root {
+            --color-texto: #ffffff; 
+            --color-acento: #ff7f2a;
+        }
+
+        /* --- ESTILOS GENERALES Y FONDO --- */
+        body {
+            color: var(--color-texto);
+            background-color: var(--bg-principal, #1a1e24); 
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            margin: 0;
+            font-family: 'Montserrat', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* --- CONTENEDOR EFECTO CRISTAL (Mismo estilo que el Login) --- */
+        .form-container {
+            background: rgba(20, 20, 20, 0.6); 
+            backdrop-filter: blur(15px); 
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 35px; 
+            padding: 40px 35px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6), inset 0 0 15px rgba(255,255,255,0.05);
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+
+        h2 {
+            text-align: center; 
+            margin-top: 0; 
+            margin-bottom: 25px;
+            font-weight: 700;
+            font-size: 22px;
+            letter-spacing: 1px;
+            color: #ffffff;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 15px;
+        }
+        
+        /* --- PREVISUALIZADOR DE FOTO --- */
+        .foto-preview-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .foto-preview {
+            width: 110px; 
+            height: 110px; 
+            border-radius: 50%; 
+            background-color: rgba(0,0,0,0.4);
+            object-fit: cover; 
+            border: 3px solid var(--color-acento);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            margin-bottom: 10px;
+        }
+
+        /* --- CAMPOS DEL FORMULARIO --- */
+        .form-group { margin-bottom: 15px; width: 100%; }
+        
+        .form-group label { 
+            display: block; 
+            margin-bottom: 6px; 
+            font-size: 11px; 
+            font-weight: 500;
+            color: rgba(255,255,255,0.6);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        
+        .form-input {
+            width: 100%; 
+            padding: 12px 15px; 
+            border-radius: 15px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: var(--color-texto);
+            box-sizing: border-box; 
+            font-family: 'Montserrat', sans-serif;
+            font-size: 14px;
+            outline: none;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);
+            transition: border-color 0.3s;
+        }
+
+        .form-input:focus {
+            border-color: var(--color-acento);
+        }
+
+        .form-input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Arreglo para que las opciones del Select se vean en fondo oscuro */
+        select.form-input option {
+            background-color: #1a1e24;
+            color: #ffffff;
+        }
+
+        /* --- BOTONES MODERNOS --- */
+        .botones-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .btn {
+            width: 100%; 
+            padding: 14px; 
+            border: none; 
+            border-radius: 25px; /* Botones tipo píldora */
+            font-weight: bold; 
+            font-size: 15px; 
+            cursor: pointer; 
+            transition: all 0.3s ease; 
+            font-family: 'Montserrat', sans-serif;
+            text-align: center;
+            text-decoration: none;
+            box-sizing: border-box;
+        }
+
+        .btn-guardar { 
+            background-color: #ffffff; 
+            color: #000000; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .btn-guardar:hover { 
+            background-color: var(--color-acento); 
+            color: #ffffff;
+            transform: translateY(-2px);
+        }
+
+        .btn-volver { 
+            background-color: transparent; 
+            color: var(--color-texto); 
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        
+        .btn-volver:hover { 
+            background-color: rgba(255,255,255,0.1); 
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="form-container">
+        <h2>Nuevo Empleado</h2>
+
+        <div class="foto-preview-container">
+            <img id="previewImg" class="foto-preview" src="https://via.placeholder.com/120/1a1e24/ffffff?text=FOTO" alt="Vista previa">
+            <input type="file" id="foto" accept="image/*" style="display: none;" onchange="previsualizarFoto(event)">
+            <label for="foto" style="cursor: pointer; font-size: 12px; color: var(--color-acento); font-weight: bold; text-decoration: underline;">
+                📷 Cambiar Fotografía
+            </label>
+        </div>
+
+        <div class="form-group">
+            <label>Nombre(s) *</label>
+            <input type="text" id="nombre" class="form-input" placeholder="Ej. Carlos">
+        </div>
+
+        <div class="form-group">
+            <label>Apellido Paterno *</label>
+            <input type="text" id="apellido_p" class="form-input" placeholder="Ej. Ramirez">
+        </div>
+
+        <div class="form-group">
+            <label>Apellido Materno</label>
+            <input type="text" id="apellido_m" class="form-input" placeholder="Ej. Lopez (Opcional)">
+        </div>
+
+        <div class="form-group">
+            <label>NIP de Acceso *</label>
+            <input type="number" id="nip" class="form-input" placeholder="Solo números (Ej. 1234)">
+        </div>
+
+        <div class="form-group">
+            <label>Cargo del Empleado *</label>
+            <select id="cargo" class="form-input">
+                <option value="1">Mesero</option>
+                <option value="2">Capitán de meseros</option>
+                <option value="3">Administrador</option>
+                <option value="4">Gerente</option>
+            </select>
+        </div>
+
+        <div class="botones-container">
+            <button class="btn btn-guardar" onclick="guardarEmpleado()">Registrar Empleado</button>
+            <a href="AdminDashboard.html" class="btn btn-volver">Cancelar / Volver</a>
+        </div>
+
+    </div>
+
+    <script>
+        // --- CARGAR DISEÑO GLOBAL (Colores y Fondo) ---
+        function cargarDiseno() {
+            const root = document.documentElement;
+            
+            // Cargar colores
+            const colorTexto = localStorage.getItem('--color-texto');
+            const colorAcento = localStorage.getItem('--color-acento');
+            if (colorTexto) root.style.setProperty('--color-texto', colorTexto);
+            if (colorAcento) root.style.setProperty('--color-acento', colorAcento);
+
+            // Cargar fondo de pantalla
+            const savedBg = localStorage.getItem('bgRestaurante');
+            if (savedBg) {
+                document.body.style.backgroundImage = `url(${savedBg})`;
+            }
+        }
+        
+        // Ejecutar carga de diseño al abrir
+        cargarDiseno();
+
+        // --- LÓGICA DE FOTO ---
+        function previsualizarFoto(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('previewImg').src = e.target.result;
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function leerFotoBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        
+                        // Tamaño ideal para avatares de empleados
+                        const MAX_WIDTH = 300; 
+                        const MAX_HEIGHT = 300;
+                        let width = img.width; 
+                        let height = img.height;
+
+                        if (width > height) { 
+                            if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } 
+                        } else { 
+                            if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } 
+                        }
+
+                        canvas.width = width; canvas.height = height;
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        // Lo convertimos a JPG con calidad del 70% (súper ligero)
+                        resolve(canvas.toDataURL('image/jpeg', 0.7));
+                    };
+                    img.onerror = error => reject(error);
+                };
+                reader.onerror = error => reject(error);
+                reader.readAsDataURL(file);
+            });
+        }  
+
+        // --- LÓGICA PARA GUARDAR ---
+        async function guardarEmpleado() {
+            let nombre = document.getElementById('nombre').value;
+            let apellido_p = document.getElementById('apellido_p').value;
+            let apellido_m = document.getElementById('apellido_m').value;
+            let nip = document.getElementById('nip').value;
+            let id_cargo = document.getElementById('cargo').value;
+            let fotoInput = document.getElementById('foto').files[0];
+
+            if (!nombre || !apellido_p || !nip) {
+                alert("Por favor, llena los campos obligatorios (*).");
+                return;
+            }
+
+            const btn = document.querySelector('.btn-guardar');
+            btn.innerText = "Guardando...";
+            btn.disabled = true;
+
+            let fotoBase64 = null;
+            if (fotoInput) {
+                fotoBase64 = await leerFotoBase64(fotoInput); 
+            }
+
+            let datos = {
+                nombre: nombre,
+                apellido_p: apellido_p,
+                apellido_m: apellido_m,
+                nip: nip,
+                id_cargo: id_cargo,
+                foto: fotoBase64
+            };
+
+            try {
+                // RUTA CORREGIDA: Apunta directo al archivo en la misma carpeta
+                let respuesta = await fetch('guardar_empleado.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(datos)
+                });
+
+                let resultado = await respuesta.json();
+                
+                if (resultado.status === 'success') {
+                    alert(resultado.message);
+                    // Limpiar formulario
+                    document.getElementById('nombre').value = '';
+                    document.getElementById('apellido_p').value = '';
+                    document.getElementById('apellido_m').value = '';
+                    document.getElementById('nip').value = '';
+                    document.getElementById('foto').value = '';
+                    document.getElementById('previewImg').src = 'https://via.placeholder.com/120/1a1e24/ffffff?text=FOTO';
+                } else {
+                    alert(resultado.message); 
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Hubo un problema de conexión con el servidor.");
+            } finally {
+                btn.innerText = "Registrar Empleado";
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

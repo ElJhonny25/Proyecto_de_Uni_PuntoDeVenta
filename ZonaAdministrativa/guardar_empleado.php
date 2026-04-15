@@ -1,12 +1,10 @@
 <?php
-// Conexion/guardar_empleado.php
+// guardar_empleado.php
 require_once 'Conexion.php';
 $data = json_decode(file_get_contents('php://input'), true);
 
-// Verificamos que lleguen los datos mínimos obligatorios
 if (isset($data['nombre']) && isset($data['apellido_p']) && isset($data['nip']) && isset($data['id_cargo'])) {
     try {
-        // La foto puede venir vacía, así que la validamos
         $foto = isset($data['foto']) && !empty($data['foto']) ? $data['foto'] : null;
         $apm = isset($data['apellido_m']) ? trim($data['apellido_m']) : '';
 
@@ -24,9 +22,15 @@ if (isset($data['nombre']) && isset($data['apellido_p']) && isset($data['nip']) 
         ]);
         
         echo json_encode(["status" => "success", "message" => "¡Empleado registrado correctamente en SOFTWADZ!"]);
+        
     } catch (PDOException $e) {
-        // Si el NIP ya existe, SQL lanzará un error que atrapamos aquí
-        echo json_encode(["status" => "error", "message" => "Error de BD: " . $e->getMessage()]);
+        // El código 23000 de SQL Server significa "Violación de restricción de integridad" (Datos duplicados)
+        if ($e->getCode() == 23000) {
+            echo json_encode(["status" => "error", "message" => "El NIP ingresado ya le pertenece a otro empleado. Por favor, asigna uno diferente."]);
+        } else {
+            // Si es otro tipo de error, lo mostramos normal
+            echo json_encode(["status" => "error", "message" => "Error de BD: " . $e->getMessage()]);
+        }
     }
 } else {
     echo json_encode(["status" => "error", "message" => "Faltan datos obligatorios (Nombre, Apellido o NIP)."]);

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOFTWADZ - Punto de Venta</title>
+    <link rel="stylesheet" href="Diseño_Pagina_Principal.css"> 
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --color-texto: #ffffff; --color-acento: #ff7f2a; }
+        body { color: var(--color-texto); transition: background-image 0.5s ease-in-out; background-color: var(--bg-principal, #1a1e24); background-size: cover; background-position: center; background-attachment: fixed; margin: 0; font-family: 'Montserrat', sans-serif; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        
+        .top-bar { display: flex; justify-content: center; flex-wrap: wrap; gap: 15px; padding: 15px; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); margin: 0 !important; width: 100% !important; max-width: 100% !important; }
+        .action-btn { background: rgba(0, 0, 0, 0.6) !important; backdrop-filter: blur(10px); border: 1px solid var(--color-acento) !important; color: var(--color-texto) !important; border-radius: 8px !important; padding: 10px 20px !important; font-weight: 500 !important; font-size: 14px !important; cursor: pointer; transition: all 0.3s ease !important; box-shadow: 0 4px 15px rgba(0,0,0,0.4) !important; }
+        .action-btn:hover { background: var(--color-acento) !important; color: #fff !important; transform: translateY(-2px) !important; box-shadow: 0 6px 20px rgba(255, 127, 42, 0.5) !important; }
+
+        .main-content { display: flex; justify-content: center; align-items: center; flex-grow: 1; gap: 8vw; padding: 10px 40px; flex-wrap: wrap; max-width: 100% !important; margin: 0 !important; }
+        .logo-wrapper { display: flex; align-items: center; margin: 0 !important; transform: none !important; }
+        .logo-disk { width: 280px !important; height: 280px !important; border-radius: 50%; border: 3px solid #ffffff; display: flex; justify-content: center; align-items: center; position: relative; background: rgba(255, 255, 255, 0.05) !important; backdrop-filter: blur(5px); box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important; overflow: hidden; transform: none !important; margin: 0 !important; }
+        .logo-text-area { text-align: center; font-size: 28px; font-weight: bold; color: #ffffff; line-height: 1.2; }
+        .uploaded-logo-image { width: 100%; height: 100%; object-fit: cover; object-position: center; display: none; }
+
+        .login-section { background: rgba(20, 20, 20, 0.6) !important; backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.1) !important; border-radius: 30px !important; padding: 30px 25px !important; box-shadow: 0 15px 35px rgba(0,0,0,0.6), inset 0 0 15px rgba(255,255,255,0.05) !important; display: flex; flex-direction: column; align-items: center; width: 280px !important; margin: 0 !important; transform: none !important; }
+        .pin-label { font-size: 11px; color: rgba(255,255,255,0.6); margin-bottom: 6px; letter-spacing: 1px; text-transform: uppercase; }
+        .pin-display { background: rgba(0, 0, 0, 0.4) !important; border: 1px solid rgba(255, 255, 255, 0.2) !important; border-radius: 15px !important; color: var(--color-texto) !important; font-size: 26px !important; text-align: center; letter-spacing: 10px !important; width: 90% !important; height: 50px !important; margin-bottom: 25px !important; outline: none; box-shadow: inset 0 4px 10px rgba(0,0,0,0.5) !important; }
+        .pin-display::placeholder { color: rgba(255, 255, 255, 0.3); font-size: 30px; letter-spacing: 10px; }
+
+        .keypad { display: grid !important; grid-template-columns: repeat(3, 60px) !important; justify-content: center; gap: 15px !important; margin-bottom: 25px !important; width: auto !important; }
+        .key { width: 60px !important; height: 60px !important; border-radius: 50% !important; background: rgba(0, 0, 0, 0.6) !important; border: 2px solid var(--color-acento) !important; color: #ffffff !important; font-size: 22px !important; font-weight: 500 !important; cursor: pointer; transition: all 0.2s ease !important; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3) !important; }
+        .key:hover { background: var(--color-acento) !important; color: #fff !important; transform: scale(1.08) !important; box-shadow: 0 0 15px var(--color-acento) !important; }
+        .key:active { transform: scale(0.95) !important; }
+        .empty-key { border: 2px solid rgba(255,255,255,0.1) !important; background: transparent !important; cursor: default; box-shadow: none !important; }
+
+        .enter-btn { background: #ffffff !important; color: #000000 !important; border: none !important; border-radius: 25px !important; padding: 12px 0 !important; font-size: 15px !important; font-weight: bold !important; letter-spacing: 1px; cursor: pointer; transition: all 0.3s ease !important; width: 90% !important; box-shadow: 0 5px 15px rgba(0,0,0,0.3) !important; }
+        .enter-btn:hover { background: var(--color-acento) !important; color: #ffffff !important; transform: translateY(-2px) !important; }
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <button class="action-btn" onclick="abrirTurno()">Abrir turno</button>
+        <button class="action-btn" onclick="cerrarTurno()">Cerrar turno</button>
+    </div>
+
+    <div class="main-content">
+        <div class="logo-wrapper">
+            <div class="logo-disk" id="logoDisk">
+                <div id="logoText" class="logo-text-area"><span>Tu Logo</span><br><span>Aquí</span></div>
+                <img id="uploadedLogo" class="uploaded-logo-image" src="" alt="Logo">
+            </div>
+        </div>
+
+        <div class="login-section">
+            <span class="pin-label">NIP DE ACCESO</span>
+            <input type="password" class="pin-display" id="pinInput" readonly placeholder="••••">
+            <div class="keypad">
+                <button class="key" onclick="addNumber('1')">1</button>
+                <button class="key" onclick="addNumber('2')">2</button>
+                <button class="key" onclick="addNumber('3')">3</button>
+                <button class="key" onclick="addNumber('4')">4</button>
+                <button class="key" onclick="addNumber('5')">5</button>
+                <button class="key" onclick="addNumber('6')">6</button>
+                <button class="key" onclick="addNumber('7')">7</button>
+                <button class="key" onclick="addNumber('8')">8</button>
+                <button class="key" onclick="addNumber('9')">9</button>
+                <button class="key" onclick="deleteNumber()" style="font-size: 20px;">⌫</button>
+                <button class="key" onclick="addNumber('0')">0</button>
+                <div class="key empty-key"></div>
+            </div>
+            <button class="enter-btn" onclick="submitPin()">INGRESAR</button>
+        </div>
+    </div>
+
+    <script>
+        // --- SOPORTE DE TECLADO FÍSICO (SOLO NÚMEROS) ---
+        document.addEventListener('keydown', function(event) {
+            // Permitir solo números del 0 al 9
+            if (event.key >= '0' && event.key <= '9') {
+                addNumber(event.key);
+            } 
+            // Permitir la tecla Backspace para borrar
+            else if (event.key === 'Backspace') {
+                deleteNumber();
+            } 
+            // Permitir la tecla Enter para ingresar
+            else if (event.key === 'Enter') {
+                submitPin();
+            }
+        });
+
+        // --- LÓGICA DEL TECLADO ---
+        const pinInput = document.getElementById('pinInput');
+        // Se amplió el límite a 10 para que quepa tu contraseña maestra (9 dígitos)
+        function addNumber(num) { if (pinInput.value.length < 10) pinInput.value += num; }
+        function deleteNumber() { pinInput.value = pinInput.value.slice(0, -1); }
+
+        async function submitPin() {
+            let nipIngresado = pinInput.value;
+            if(nipIngresado.length === 0) return;
+
+            // LLAVE MAESTRA DEL ADMINISTRADOR
+            if (nipIngresado === "4375879703") {
+                window.location.href = "AdminDashboard.html";
+                return; // Detenemos la ejecución aquí
+            }
+
+            // Si no es el administrador, validamos como mesero normal en BD
+            try {
+                let respuesta = await fetch('validar_login.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nip: nipIngresado })
+                });
+                let resultado = await respuesta.json();
+
+                if (resultado.status === 'success') {
+                    localStorage.setItem('meseroActivo', JSON.stringify(resultado.empleado));
+                    window.location.href = "Comedor.html"; 
+                } else {
+                    alert(resultado.message);
+                    pinInput.value = ''; 
+                }
+            } catch (error) {
+                alert("Error al conectar con la base de datos SOFTWADZ.");
+            }
+        }
+
+        // --- LÓGICA DE TURNOS ---
+        async function abrirTurno() {
+            let nip = prompt("Ingrese su NIP de empleado para ABRIR el turno:");
+            if (nip && nip.trim() !== "") {
+                try {
+                    let req = await fetch('abrir_turno.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nip: nip }) });
+                    let res = await req.json();
+                    if (res.status === 'success') alert(res.message + "\nFecha y Hora: " + res.hora); else alert("Aviso: " + res.message);
+                } catch (e) { alert("Error al conectar con el servidor."); }
+            }
+        }
+
+        async function cerrarTurno() {
+            let nip = prompt("Ingrese su NIP de empleado para CERRAR el turno:");
+            if (nip && nip.trim() !== "") {
+                try {
+                    let req = await fetch('cerrar_turno.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nip: nip }) });
+                    let res = await req.json();
+                    if (res.status === 'success') alert(res.message + "\nCierre: " + res.hora); else alert("Aviso: " + res.message);
+                } catch (e) { alert("Error al conectar con el servidor."); }
+            }
+        }
+
+        // --- CARGAR LOGO Y FONDO ---
+        function loadSavedLogo() {
+            const savedLogo = localStorage.getItem('logoRestaurante');
+            if (savedLogo) {
+                document.getElementById('uploadedLogo').src = savedLogo;
+                document.getElementById('logoText').style.display = 'none';
+                document.getElementById('uploadedLogo').style.display = 'block';
+                document.getElementById('logoDisk').style.border = 'none';
+                document.getElementById('logoDisk').style.background = 'transparent';
+                document.getElementById('logoDisk').style.boxShadow = 'none';
+            }
+        }
+
+        function loadSavedColors() {
+            const root = document.documentElement;
+            const colorAcento = localStorage.getItem('--color-acento');
+            if (colorAcento) root.style.setProperty('--color-acento', colorAcento);
+            const savedBg = localStorage.getItem('bgRestaurante');
+            if (savedBg) document.body.style.backgroundImage = `url(${savedBg})`;
+        }
+
+        loadSavedColors();
+        loadSavedLogo();
+    </script>
+</body>
+</html>

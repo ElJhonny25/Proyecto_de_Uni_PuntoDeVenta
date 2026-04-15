@@ -1,2 +1,0 @@
-# Proyecto_de_Uni_PuntoDeVenta
-Proyecto_de_Uni_PuntoDeVenta

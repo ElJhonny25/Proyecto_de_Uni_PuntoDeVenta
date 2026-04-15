@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8"> 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comedor - Punto de Venta</title>
+    <link rel="stylesheet" href="Comedor.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --color-texto: #ffffff; --color-acento: #ff7f2a; --bg-principal: #1a1e24; }
+        body { margin: 0; font-family: 'Montserrat', sans-serif; color: var(--color-texto); background-color: var(--bg-principal); background-size: cover; background-position: center; background-attachment: fixed; height: 100vh; overflow: hidden; }
+        .app-container { display: flex; height: 100vh; width: 100vw; background: rgba(0, 0, 0, 0.5); }
+        .main-area { flex: 1; display: flex; flex-direction: column; padding: 20px; gap: 15px; box-sizing: border-box; position: relative;}
+        
+        .top-bar, .edit-tools { display: flex; gap: 15px; background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); padding: 15px 25px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1); align-items: center; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
+        .edit-tools { display: none; } 
+        .action-btn, .edit-btn { background: rgba(0, 0, 0, 0.6); border: 1px solid var(--color-acento); color: #ffffff; padding: 10px 20px; border-radius: 12px; cursor: pointer; font-weight: 500; font-family: 'Montserrat', sans-serif; transition: all 0.3s ease; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .action-btn:hover, .edit-btn:hover { background: var(--color-acento); transform: translateY(-2px); box-shadow: 0 6px 15px var(--color-acento); }
+
+        .areas-tabs { display: flex; gap: 10px; }
+        .tab-btn { background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.2); color: rgba(255, 255, 255, 0.7); padding: 12px 25px; border-radius: 15px 15px 0 0; cursor: pointer; font-weight: bold; transition: all 0.3s; border-bottom: none; }
+        .tab-btn.active { background: var(--color-acento); border-color: var(--color-acento); color: #fff; }
+
+        .floor-plan-container { flex: 1; background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 0 20px 20px 20px; position: relative; overflow: hidden; box-shadow: inset 0 0 30px rgba(0,0,0,0.5), 0 10px 20px rgba(0,0,0,0.3); }
+        .floor-plan-container.edit-mode { background-image: linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px); background-size: 30px 30px; }
+        .area-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; }
+        .area-layer.active { display: block; }
+
+        .mesa { position: absolute; width: 70px; height: 70px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; color: white; font-size: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.6); border: 2px solid rgba(255,255,255,0.8); transition: transform 0.1s; user-select: none; text-shadow: 1px 1px 3px rgba(0,0,0,0.5); }
+        .mesa.libre { background-color: #28a745; }
+        .mesa.ocupada { background-color: #dc3545; }
+        .mesa.sucia { background-color: #ffc107; color: #000; text-shadow: none;}
+        .mesa.selected { box-shadow: 0 0 0 4px #007bff, 0 8px 20px rgba(0,0,0,0.6); transform: scale(1.15); z-index: 100; }
+
+        .sidebar { width: 320px; background: rgba(20, 20, 20, 0.6); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); border-left: 1px solid rgba(255,255,255,0.1); padding: 40px 25px; display: flex; flex-direction: column; align-items: center; box-shadow: -15px 0 35px rgba(0,0,0,0.5); box-sizing: border-box; z-index: 10; }
+        .sidebar h2 { margin-top: 0; font-size: 20px; letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px; width: 100%; text-align: center; }
+        .profile-pic { width: 140px; height: 140px; border-radius: 20px; margin-bottom: 30px; margin-top: 10px; border: 3px solid var(--color-acento); box-shadow: 0 8px 20px rgba(0,0,0,0.5); background-size: cover; background-position: center; background-color: rgba(0,0,0,0.5); }
+        .info-group { width: 100%; margin-bottom: 20px; }
+        .info-group label { display: block; font-size: 11px; color: rgba(255,255,255,0.6); text-transform: uppercase; margin-bottom: 6px; letter-spacing: 1px; text-align: center; }
+        .info-group input { width: 100%; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); color: var(--color-texto); padding: 12px; border-radius: 10px; font-family: 'Montserrat', sans-serif; text-align: center; box-sizing: border-box; font-weight: bold; outline: none; }
+        .spacer { flex-grow: 1; }
+        .btn-salir { background: transparent; border: 1px solid rgba(255,255,255,0.3); color: white; padding: 15px; border-radius: 30px; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 10px; width: 100%; justify-content: center; font-weight: bold; font-size: 16px; margin-top: 20px; }
+        .btn-salir:hover { background: #dc3545; border-color: #dc3545; transform: translateY(-2px); }
+
+        /* --- NUEVO: MENÚ CONTEXTUAL Y MODAL DE CUENTA --- */
+        .context-menu {
+            display: none; position: absolute; background: rgba(20,20,20,0.95); backdrop-filter: blur(10px);
+            border: 1px solid var(--color-acento); border-radius: 12px; padding: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            z-index: 1000; flex-direction: column; gap: 5px; min-width: 180px;
+        }
+        .context-btn {
+            background: transparent; color: white; border: none; padding: 12px 15px; text-align: left;
+            cursor: pointer; border-radius: 8px; font-weight: 500; font-size: 14px; font-family: 'Montserrat', sans-serif; transition: 0.2s;
+        }
+        .context-btn:hover { background: var(--color-acento); font-weight: bold; }
+
+        .modal-bg {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 2000;
+        }
+        .modal-cuenta {
+            background: #fff; color: #000; padding: 30px; border-radius: 15px; width: 350px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); font-family: monospace;
+        }
+        .modal-cuenta-header { text-align: center; border-bottom: 2px dashed #ccc; padding-bottom: 10px; margin-bottom: 15px; font-weight: bold; font-size: 18px; }
+        .cuenta-item { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 4px;}
+        .cuenta-total { margin-top: 15px; text-align: right; font-size: 20px; font-weight: bold; background: #eee; padding: 10px; border-radius: 8px;}
+        .btn-cerrar-modal { margin-top: 20px; width: 100%; padding: 12px; background: #333; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;}
+    </style>
+</head>
+<body>
+
+    <div id="contextMenu" class="context-menu"></div>
+
+    <div id="modalVistaCuenta" class="modal-bg">
+        <div class="modal-cuenta">
+            <div class="modal-cuenta-header" id="modalCuentaTitulo">Cuenta Mesa --</div>
+            <div id="modalCuentaItems" style="max-height: 300px; overflow-y: auto;"></div>
+            <div class="cuenta-total" id="modalCuentaTotal">TOTAL: $0.00</div>
+            <button class="btn-cerrar-modal" onclick="cerrarModalCuenta()">Cerrar Consulta</button>
+        </div>
+    </div>
+
+    <div class="app-container">
+        <div class="main-area">
+            <div class="top-bar">
+                <button class="action-btn" id="btnEditarComedor" onclick="toggleEditMode()">✏️ Editar Comedor</button>
+            </div>
+
+            <div class="edit-tools" id="editTools">
+                <span style="font-weight: bold; color: var(--color-acento);">Modo Edición:</span>
+                <button class="edit-btn" onclick="agregarMesa()">+ Agregar Mesa</button>
+                <button class="edit-btn" onclick="agregarArea()">+ Nueva Área</button>
+                <button class="edit-btn" onclick="eliminarMesaSeleccionada()" style="border-color: #dc3545;">- Eliminar Mesa</button>
+                <span style="font-size: 12px; margin-left: auto; color: rgba(255,255,255,0.6);">(Arrastra las mesas para moverlas)</span>
+            </div>
+
+            <div class="areas-tabs" id="areasContainer">
+                <button class="tab-btn active" onclick="cambiarArea('Comedor Principal')">Comedor Principal</button>
+            </div>
+
+            <div class="floor-plan-container" id="floorPlan">
+                <div class="area-layer active" id="layer-Comedor Principal"></div>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <h2>Perfil de Empleado</h2>
+            <div class="profile-pic" id="fotoMesero"></div>
+            <div class="info-group"><label>ID Empleado / NIP</label><input type="text" id="infoId" readonly style="color: var(--color-acento);"></div>
+            <div class="info-group"><label>Nombre del Operador</label><input type="text" id="infoNombre" readonly></div>
+            <div class="info-group"><label>Cargo Asignado</label><input type="text" id="infoCargo" readonly></div>
+            <div class="spacer"></div>
+            <button class="btn-salir" onclick="cerrarSesion()">Salir de Sesión ➡</button>
+        </div>
+    </div>
+
+    <script>
+        function cargarDiseno() {
+            const root = document.documentElement;
+            const colorTexto = localStorage.getItem('--color-texto');
+            const colorAcento = localStorage.getItem('--color-acento');
+            if (colorTexto) root.style.setProperty('--color-texto', colorTexto);
+            if (colorAcento) root.style.setProperty('--color-acento', colorAcento);
+            const savedBg = localStorage.getItem('bgRestaurante');
+            if (savedBg) document.body.style.backgroundImage = `url(${savedBg})`;
+        }
+        cargarDiseno();
+
+        const floorPlan = document.getElementById('floorPlan');
+        const editTools = document.getElementById('editTools');
+        const btnEditarComedor = document.getElementById('btnEditarComedor');
+        const areasContainer = document.getElementById('areasContainer');
+        const contextMenu = document.getElementById('contextMenu');
+        
+        let isEditing = false; let mesaSeleccionada = null; let draggedMesa = null;
+        let offsetX = 0; let offsetY = 0;
+        let mesaClickeadaActual = null; // Guardar la mesa que clickeamos para el menú contextual
+
+        document.addEventListener("DOMContentLoaded", async function() {
+            let sesion = localStorage.getItem('meseroActivo');
+            if (sesion) {
+                let mesero = JSON.parse(sesion);
+                document.getElementById('infoId').value = "ID: " + mesero.id + "  |  NIP: " + mesero.nip;
+                document.getElementById('infoNombre').value = mesero.nombre;
+                document.getElementById('infoCargo').value = mesero.cargo;
+                let fotoDiv = document.getElementById('fotoMesero');
+                if(mesero.foto && mesero.foto !== "null" && mesero.foto !== "") fotoDiv.style.backgroundImage = `url(${mesero.foto})`;
+                else fotoDiv.style.backgroundImage = "linear-gradient(45deg, #2c3e50, #fd746c)";
+            } else {
+                alert("Por favor inicia sesión primero."); window.location.href = "AdminDeshboard.html"; return;
+            }
+
+            // 1. Cargamos las mesas de la base de datos
+            await cargarComedor();
+
+            // 2. Revisamos si el Punto de Venta mandó la instrucción de pintar una mesa de rojo
+            let comando = JSON.parse(localStorage.getItem('comandoMesa'));
+            if (comando) {
+                document.querySelectorAll('.mesa').forEach(m => {
+                    if(m.innerText === comando.nombre) {
+                        m.className = `mesa ${comando.estado}`; // Cambiamos clase a ocupada
+                    }
+                });
+                localStorage.removeItem('comandoMesa');
+                guardarComedor(); // Guardamos el nuevo color en SQL Server
+            }
+        });
+
+        // --- LÓGICA DEL MENÚ CONTEXTUAL DE SOFTRESTAURANT ---
+        floorPlan.addEventListener('click', function(e) {
+            if (isEditing) { contextMenu.style.display = 'none'; return; }
+
+            if (e.target.classList.contains('mesa')) {
+                mesaClickeadaActual = e.target;
+                let nombreMesa = e.target.innerText;
+                let estado = e.target.classList.contains('ocupada') ? 'ocupada' : e.target.classList.contains('sucia') ? 'sucia' : 'libre';
+
+                if (estado === 'libre') {
+                    // Si está verde, abrimos el menú directo
+                    abrirVenta(nombreMesa, 'libre');
+                } else {
+                    // Si está roja o amarilla, abrimos el menú contextual donde está el ratón
+                    mostrarMenuOpciones(e.pageX, e.pageY, nombreMesa, estado);
+                }
+            } else {
+                contextMenu.style.display = 'none'; // Si clickea fuera, esconder menú
+            }
+        });
+
+        function mostrarMenuOpciones(x, y, nombre, estado) {
+            contextMenu.style.display = 'flex';
+            contextMenu.style.left = x + 'px';
+            contextMenu.style.top = y + 'px';
+            contextMenu.innerHTML = '';
+
+            if (estado === 'ocupada') { // Mesa en Rojo
+                contextMenu.innerHTML += `<button class="context-btn" onclick="abrirVenta('${nombre}', 'ocupada')">📝 Capturar</button>`;
+                contextMenu.innerHTML += `<button class="context-btn" onclick="consultarCuenta('${nombre}')">📋 Consultar cuenta</button>`;
+                contextMenu.innerHTML += `<button class="context-btn" onclick="imprimirCuentaComedor()">🖨️ Imprimir cuenta</button>`;
+                contextMenu.innerHTML += `<button class="context-btn" onclick="alert('Función de cambio de mesero en desarrollo')">👤 Cambiar de mesero</button>`;
+            } else if (estado === 'sucia') { // Mesa en Amarillo
+                contextMenu.innerHTML += `<button class="context-btn" onclick="reabrirCuenta()">🔄 Reabrir cuenta</button>`;
+            }
+        }
+
+        // ACCIONES DEL MENÚ CONTEXTUAL
+        function abrirVenta(nombre, estado) {
+            localStorage.setItem('mesaActiva', JSON.stringify({ nombre: nombre, estado: estado }));
+            window.location.href = "PuntoVenta.html";
+        }
+
+        function consultarCuenta(nombre) {
+            contextMenu.style.display = 'none';
+            let cuentaGuardada = localStorage.getItem('cuenta_' + nombre);
+            if(cuentaGuardada) {
+                let items = JSON.parse(cuentaGuardada);
+                document.getElementById('modalCuentaTitulo').innerText = "Cuenta Mesa " + nombre;
+                let htmlItems = ""; let total = 0;
+                items.forEach(i => {
+                    htmlItems += `<div class="cuenta-item"><span>${i.cantidad}x ${i.nombre}</span><span>$${i.subtotal.toFixed(2)}</span></div>`;
+                    total += i.subtotal;
+                });
+                document.getElementById('modalCuentaItems').innerHTML = htmlItems;
+                document.getElementById('modalCuentaTotal').innerText = "TOTAL: $" + total.toFixed(2);
+                document.getElementById('modalVistaCuenta').style.display = 'flex';
+            } else {
+                alert("No se encontró registro de cuenta para esta mesa.");
+            }
+        }
+        function cerrarModalCuenta() { document.getElementById('modalVistaCuenta').style.display = 'none'; }
+
+        function imprimirCuentaComedor() {
+            contextMenu.style.display = 'none';
+            alert("Enviando cuenta a impresora de caja...");
+            mesaClickeadaActual.className = "mesa sucia"; // Cambia a amarillo
+            guardarComedor();
+        }
+
+        function reabrirCuenta() {
+            contextMenu.style.display = 'none';
+            mesaClickeadaActual.className = "mesa ocupada"; // Cambia a rojo
+            guardarComedor();
+        }
+
+
+        // --- FUNCIONES DE BASE DE DATOS (MANTENIDAS) ---
+        function cerrarSesion() { if(confirm("¿Estás seguro que deseas cerrar sesión?")) { localStorage.removeItem('meseroActivo'); window.location.href = "Pagina_Principal.html"; } }
+
+        async function guardarComedor() {
+            let configuracion = { areas: [], mesas: [] };
+            document.querySelectorAll('.tab-btn').forEach(btn => configuracion.areas.push(btn.innerText));
+            document.querySelectorAll('.area-layer').forEach(layer => {
+                let nombreArea = layer.id.replace('layer-', '');
+                layer.querySelectorAll('.mesa').forEach(mesa => {
+                    let estado = 'libre';
+                    if(mesa.classList.contains('ocupada')) estado = 'ocupada';
+                    if(mesa.classList.contains('sucia')) estado = 'sucia';
+                    configuracion.mesas.push({ nombre: mesa.innerText, area: nombreArea, left: mesa.style.left, top: mesa.style.top, estado: estado });
+                });
+            });
+            try { await fetch('guardar_comedor.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(configuracion) }); } catch(e) {}
+        }
+
+        async function cargarComedor() {
+            try {
+                let req = await fetch('cargar_comedor.php');
+                let res = await req.json();
+                if (res.status === 'success') {
+                    areasContainer.innerHTML = ''; floorPlan.innerHTML = '';
+                    if(res.areas.length === 0) { res.areas = ["Comedor Principal"]; }
+                    res.areas.forEach((nombreArea, index) => {
+                        let btn = document.createElement('button'); btn.className = index === 0 ? 'tab-btn active' : 'tab-btn';
+                        btn.innerText = nombreArea; btn.onclick = function() { cambiarArea(nombreArea); }; areasContainer.appendChild(btn);
+                        let layer = document.createElement('div'); layer.className = index === 0 ? 'area-layer active' : 'area-layer';
+                        layer.id = 'layer-' + nombreArea; floorPlan.appendChild(layer);
+                    });
+                    res.mesas.forEach(m => {
+                        let capa = document.getElementById('layer-' + m.area);
+                        if (capa) {
+                            let mesa = document.createElement('div'); mesa.className = `mesa ${m.estado}`;
+                            mesa.style.left = m.left; mesa.style.top = m.top; mesa.style.cursor = isEditing ? 'grab' : 'pointer';
+                            mesa.innerText = m.nombre; capa.appendChild(mesa);
+                        }
+                    });
+                }
+            } catch(e) {}
+        }
+
+        // --- MODO EDICIÓN DE MESAS (MANTENIDO) ---
+        function toggleEditMode() {
+            // SI VAMOS A ENTRAR AL MODO EDICIÓN, PEDIMOS CONTRASEÑA
+            if (!isEditing) {
+                let pass = prompt("Protección de Sistema:\nIngrese contraseña de administrador para editar el comedor:");
+                if (pass !== "4375879703") {
+                    alert("Contraseña incorrecta. Acceso denegado.");
+                    return; // Si no es la correcta, cancelamos la acción
+                }
+            }
+
+            // Si es la correcta o estamos apagando el modo edición, continuamos normal:
+            isEditing = !isEditing; 
+            contextMenu.style.display = 'none';
+            if (isEditing) { 
+                floorPlan.classList.add('edit-mode'); 
+                editTools.style.display = 'flex'; 
+                btnEditarComedor.style.background = "var(--color-acento)"; 
+            } else { 
+                floorPlan.classList.remove('edit-mode'); 
+                editTools.style.display = 'none'; 
+                btnEditarComedor.style.background = "rgba(0, 0, 0, 0.6)"; 
+                quitarSeleccionMesas(); 
+            }
+            document.querySelectorAll('.mesa').forEach(mesa => mesa.style.cursor = isEditing ? 'grab' : 'pointer');
+        }
+
+        function cambiarArea(nombreArea) {
+            quitarSeleccionMesas(); contextMenu.style.display = 'none';
+            document.querySelectorAll('.tab-btn').forEach(btn => { if(btn.innerText === nombreArea) btn.classList.add('active'); else btn.classList.remove('active'); });
+            document.querySelectorAll('.area-layer').forEach(layer => { if(layer.id === 'layer-' + nombreArea) layer.classList.add('active'); else layer.classList.remove('active'); });
+        }
+
+        function agregarArea() { const n = prompt("Ingresa el nombre de la nueva área:"); if (n && n.trim() !== "") { if(document.getElementById('layer-' + n)) return alert("Área ya existe."); const b = document.createElement('button'); b.classList.add('tab-btn'); b.innerText = n; b.onclick = function() { cambiarArea(n); }; areasContainer.appendChild(b); const l = document.createElement('div'); l.classList.add('area-layer'); l.id = 'layer-' + n; floorPlan.appendChild(l); cambiarArea(n); guardarComedor(); } }
+        function agregarMesa() { const c = document.querySelector('.area-layer.active'); if(!c) return alert("Selecciona un área."); let n = prompt("Identificador de la mesa:"); if (!n || n.trim() === "") return; n = n.trim(); let e = false; c.querySelectorAll('.mesa').forEach(m => { if(m.innerText === n) e = true; }); if(e) return alert("Mesa ya existe."); const m = document.createElement('div'); m.classList.add('mesa', 'libre'); m.style.left = '200px'; m.style.top = '200px'; m.style.cursor = isEditing ? 'grab' : 'pointer'; m.innerText = n; c.appendChild(m); quitarSeleccionMesas(); m.classList.add('selected'); mesaSeleccionada = m; guardarComedor(); }
+        function eliminarMesaSeleccionada() { if (mesaSeleccionada) { if(confirm("¿Eliminar mesa " + mesaSeleccionada.innerText + "?")) { mesaSeleccionada.remove(); mesaSeleccionada = null; guardarComedor(); } } else { alert("Selecciona una mesa primero."); } }
+        function quitarSeleccionMesas() { document.querySelectorAll('.mesa').forEach(m => m.classList.remove('selected')); mesaSeleccionada = null; }
+
+        floorPlan.addEventListener('mousedown', function(e) {
+            if (!isEditing) return; 
+            if (e.target.classList.contains('mesa')) { quitarSeleccionMesas(); draggedMesa = e.target; draggedMesa.classList.add('selected'); mesaSeleccionada = draggedMesa; draggedMesa.style.cursor = 'grabbing'; const rect = draggedMesa.getBoundingClientRect(); offsetX = e.clientX - rect.left; offsetY = e.clientY - rect.top; } 
+            else if (e.target.classList.contains('area-layer') || e.target.classList.contains('floor-plan-container')) { quitarSeleccionMesas(); }
+        });
+
+        document.addEventListener('mousemove', function(e) { if (draggedMesa && isEditing) { const planRect = floorPlan.getBoundingClientRect(); let newX = e.clientX - planRect.left - offsetX; let newY = e.clientY - planRect.top - offsetY; const maxLeft = planRect.width - draggedMesa.offsetWidth; const maxTop = planRect.height - draggedMesa.offsetHeight; newX = Math.max(0, Math.min(newX, maxLeft)); newY = Math.max(0, Math.min(newY, maxTop)); draggedMesa.style.left = newX + 'px'; draggedMesa.style.top = newY + 'px'; } });
+        document.addEventListener('mouseup', function() { if (draggedMesa) { draggedMesa.style.cursor = isEditing ? 'grab' : 'pointer'; draggedMesa = null; guardarComedor(); } });
+    </script>
+</body>
+</html>
