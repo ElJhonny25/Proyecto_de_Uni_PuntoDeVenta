@@ -188,7 +188,7 @@
 
             } else {
                 alert("Error: No se seleccionó ninguna mesa.");
-                window.location.href = "Comedor/Comedor.html";
+                window.location.href = "Comedor.html";
                 return;
             }
 
@@ -198,7 +198,7 @@
             cargarMenuDeBD();
         });
 
-        function volverComedor() { window.location.href = "Comedor/Comedor.html"; }
+        function volverComedor() { window.location.href = "Comedor.html"; }
 
         function cambiarMultiplicador(cambio) {
             cantidadGlobal += cambio;
@@ -209,7 +209,7 @@
 
         async function cargarMenuDeBD() {
             try {
-                let req = await fetch('Comedor/cargar_menu.php');
+                let req = await fetch('cargar_menu.php');
                 let res = await req.json();
                 if(res.status === 'success') {
                     menuCompleto = res.productos; 
@@ -322,7 +322,7 @@
             // 2. Le dejamos un "mensaje" al Comedor para que ponga la mesa en rojo (ocupada)
             localStorage.setItem('comandoMesa', JSON.stringify({ nombre: nombreMesaActual, estado: 'ocupada' }));
 
-            window.location.href = "Comedor/Comedor.html";
+            window.location.href = "Comedor.html";
         }
     </script>
 </body>

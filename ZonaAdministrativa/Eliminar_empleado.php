@@ -1,6 +1,6 @@
 <?php
 // Eliminar_empleado.php
-require_once 'Proyecto_de_Uni_PuntoDeVenta/Conexion.php';
+require_once '../Conexion.php';
 
 try {
     // Agregamos FOTO a la consulta
