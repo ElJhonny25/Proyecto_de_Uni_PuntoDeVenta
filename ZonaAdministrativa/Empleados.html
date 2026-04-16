@@ -210,7 +210,7 @@
 
         <div class="botones-container">
             <button class="btn btn-guardar" onclick="guardarEmpleado()">Registrar Empleado</button>
-            <a href="AdminDashboard.html" class="btn btn-volver">Cancelar / Volver</a>
+            <a href="ZonaAdministrativa/AdminDashboard.html" class="btn btn-volver">Cancelar / Volver</a>
         </div>
 
     </div>
@@ -317,7 +317,7 @@
 
             try {
                 // RUTA CORREGIDA: Apunta directo al archivo en la misma carpeta
-                let respuesta = await fetch('guardar_empleado.php', {
+                let respuesta = await fetch('ZonaAdministrativa/guardar_empleado.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(datos)

@@ -1,6 +1,6 @@
 <?php
 // Conexion/validar_login.php
-require_once 'Conexion.php';
+require_once 'Proyecto_de_Uni_PuntoDeVenta/Conexion.php';
 $data = json_decode(file_get_contents('php://input'), true);
 
 if (isset($data['nip'])) {

@@ -4,7 +4,7 @@
     <meta charset="UTF-8"> 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Comedor - Punto de Venta</title>
-    <link rel="stylesheet" href="Comedor.css">
+    <link rel="stylesheet" href="Comedor/Comedor.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         :root { --color-texto: #ffffff; --color-acento: #ff7f2a; --bg-principal: #1a1e24; }
@@ -146,7 +146,7 @@
                 if(mesero.foto && mesero.foto !== "null" && mesero.foto !== "") fotoDiv.style.backgroundImage = `url(${mesero.foto})`;
                 else fotoDiv.style.backgroundImage = "linear-gradient(45deg, #2c3e50, #fd746c)";
             } else {
-                alert("Por favor inicia sesión primero."); window.location.href = "AdminDeshboard.html"; return;
+                alert("Por favor inicia sesión primero."); window.location.href = "ZonaAdministrativa/AdminDeshboard.html"; return;
             }
 
             // 1. Cargamos las mesas de la base de datos
@@ -205,7 +205,7 @@
         // ACCIONES DEL MENÚ CONTEXTUAL
         function abrirVenta(nombre, estado) {
             localStorage.setItem('mesaActiva', JSON.stringify({ nombre: nombre, estado: estado }));
-            window.location.href = "PuntoVenta.html";
+            window.location.href = "Comedor/PuntoVenta.html";
         }
 
         function consultarCuenta(nombre) {

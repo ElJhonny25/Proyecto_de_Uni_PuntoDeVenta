@@ -1,6 +1,6 @@
 <?php
 // Conexion/cargar_comedor.php
-require_once 'Conexion.php';
+require_once 'Proyecto_de_Uni_PuntoDeVenta/Conexion.php';
 
 try {
     // 1. Traer todas las áreas

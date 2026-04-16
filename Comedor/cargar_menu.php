@@ -1,6 +1,6 @@
 <?php
 // cargar_menu.php
-require_once 'Conexion.php';
+require_once 'Proyecto_de_Uni_PuntoDeVenta/Conexion.php';
 
 try {
     // 1. Obtener todas las categorías
