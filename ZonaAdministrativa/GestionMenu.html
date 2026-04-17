@@ -119,7 +119,7 @@
             let datos = { nombre: nombre, precio: precio, id_categoria: id_categoria };
 
             try {
-                let respuesta = await fetch('ZonaAdministrativa/guardar_producto.php', {
+                let respuesta = await fetch('guardar_producto.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(datos)
