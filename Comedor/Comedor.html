@@ -243,7 +243,7 @@
 
 
         // --- FUNCIONES DE BASE DE DATOS (MANTENIDAS) ---
-        function cerrarSesion() { if(confirm("¿Estás seguro que deseas cerrar sesión?")) { localStorage.removeItem('meseroActivo'); window.location.href = "Pagina_Principal.html"; } }
+        function cerrarSesion() { if(confirm("¿Estás seguro que deseas cerrar sesión?")) { localStorage.removeItem('meseroActivo'); window.location.href = "../Pagina_Principal/Pagina_Principal.html"; } }
 
         async function guardarComedor() {
             let configuracion = { areas: [], mesas: [] };

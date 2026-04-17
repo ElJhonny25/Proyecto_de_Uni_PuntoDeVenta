@@ -67,7 +67,7 @@ try {
 
     <div class="container">
         <div class="top-buttons">
-            <a href="Pagina_Principal/Pagina_Principal.html" class="btn btn-volver">⬅ Volver al Inicio</a>
+            <a href="AdminDashboard.html" class="btn btn-volver">⬅ Volver al Inicio</a>
             <a href="ZonaAdministrativa/Empleados.html" class="btn btn-nuevo">➕ Ingresar Nuevo Personal</a>
         </div>
         
