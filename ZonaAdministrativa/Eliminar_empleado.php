@@ -68,7 +68,7 @@ try {
     <div class="container">
         <div class="top-buttons">
             <a href="AdminDashboard.html" class="btn btn-volver">⬅ Volver al Inicio</a>
-            <a href="ZonaAdministrativa/Empleados.html" class="btn btn-nuevo">➕ Ingresar Nuevo Personal</a>
+            <a href="Empleados.html" class="btn btn-nuevo">➕ Ingresar Nuevo Personal</a>
         </div>
         
         <h2>Gestión de Personal</h2>
@@ -168,7 +168,7 @@ try {
         async function eliminarEmpleado(id, nombre) {
             if(confirm(`¿Estás seguro de que deseas eliminar permanentemente a ${nombre}?`)) {
                 try {
-                    let req = await fetch('ZonaAdministrativa/borrar_empleado.php', {
+                    let req = await fetch('borrar_empleado.php', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ id_empleado: id })
@@ -243,7 +243,7 @@ try {
             }
 
             try {
-                let req = await fetch('ZonaAdministrativa/actualizar_empleado.php', {
+                let req = await fetch('actualizar_empleado.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(datos)
