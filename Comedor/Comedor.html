@@ -4,7 +4,6 @@
     <meta charset="UTF-8"> 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Comedor - Punto de Venta</title>
-    <link rel="stylesheet" href="Comedor/Comedor.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         :root { --color-texto: #ffffff; --color-acento: #ff7f2a; --bg-principal: #1a1e24; }
@@ -15,11 +14,14 @@
         .top-bar, .edit-tools { display: flex; gap: 15px; background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); padding: 15px 25px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1); align-items: center; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
         .edit-tools { display: none; } 
         .action-btn, .edit-btn { background: rgba(0, 0, 0, 0.6); border: 1px solid var(--color-acento); color: #ffffff; padding: 10px 20px; border-radius: 12px; cursor: pointer; font-weight: 500; font-family: 'Montserrat', sans-serif; transition: all 0.3s ease; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        .action-btn:hover, .edit-btn:hover { background: var(--color-acento); transform: translateY(-2px); box-shadow: 0 6px 15px var(--color-acento); }
+        .action-btn:hover, .edit-btn:hover { background: var(--color-acento); transform: translateY(-2px); box-shadow: 0 6px 15px var(--color-acento); color: white !important;}
 
-        .areas-tabs { display: flex; gap: 10px; }
-        .tab-btn { background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.2); color: rgba(255, 255, 255, 0.7); padding: 12px 25px; border-radius: 15px 15px 0 0; cursor: pointer; font-weight: bold; transition: all 0.3s; border-bottom: none; }
+        .areas-tabs { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 5px; }
+        .tab-btn { background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.2); color: rgba(255, 255, 255, 0.7); padding: 12px 25px; border-radius: 15px 15px 0 0; cursor: pointer; font-weight: bold; transition: all 0.3s; border-bottom: none; user-select: none; }
         .tab-btn.active { background: var(--color-acento); border-color: var(--color-acento); color: #fff; }
+        
+        /* Efecto de Pestañas al arrastrarlas */
+        .tab-btn.dragging { opacity: 0.5; border: 2px dashed var(--color-acento); background: rgba(0,0,0,0.8); transform: scale(0.95); }
 
         .floor-plan-container { flex: 1; background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 0 20px 20px 20px; position: relative; overflow: hidden; box-shadow: inset 0 0 30px rgba(0,0,0,0.5), 0 10px 20px rgba(0,0,0,0.3); }
         .floor-plan-container.edit-mode { background-image: linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px); background-size: 30px 30px; }
@@ -42,26 +44,13 @@
         .btn-salir { background: transparent; border: 1px solid rgba(255,255,255,0.3); color: white; padding: 15px; border-radius: 30px; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 10px; width: 100%; justify-content: center; font-weight: bold; font-size: 16px; margin-top: 20px; }
         .btn-salir:hover { background: #dc3545; border-color: #dc3545; transform: translateY(-2px); }
 
-        /* --- NUEVO: MENÚ CONTEXTUAL Y MODAL DE CUENTA --- */
-        .context-menu {
-            display: none; position: absolute; background: rgba(20,20,20,0.95); backdrop-filter: blur(10px);
-            border: 1px solid var(--color-acento); border-radius: 12px; padding: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-            z-index: 1000; flex-direction: column; gap: 5px; min-width: 180px;
-        }
-        .context-btn {
-            background: transparent; color: white; border: none; padding: 12px 15px; text-align: left;
-            cursor: pointer; border-radius: 8px; font-weight: 500; font-size: 14px; font-family: 'Montserrat', sans-serif; transition: 0.2s;
-        }
+        /* MENÚ CONTEXTUAL Y MODAL */
+        .context-menu { display: none; position: absolute; background: rgba(20,20,20,0.95); backdrop-filter: blur(10px); border: 1px solid var(--color-acento); border-radius: 12px; padding: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); z-index: 1000; flex-direction: column; gap: 5px; min-width: 180px; }
+        .context-btn { background: transparent; color: white; border: none; padding: 12px 15px; text-align: left; cursor: pointer; border-radius: 8px; font-weight: 500; font-size: 14px; font-family: 'Montserrat', sans-serif; transition: 0.2s; }
         .context-btn:hover { background: var(--color-acento); font-weight: bold; }
-
-        .modal-bg {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 2000;
-        }
-        .modal-cuenta {
-            background: #fff; color: #000; padding: 30px; border-radius: 15px; width: 350px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5); font-family: monospace;
-        }
+        
+        .modal-bg { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 2000; }
+        .modal-cuenta { background: #fff; color: #000; padding: 30px; border-radius: 15px; width: 350px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); font-family: monospace; }
         .modal-cuenta-header { text-align: center; border-bottom: 2px dashed #ccc; padding-bottom: 10px; margin-bottom: 15px; font-weight: bold; font-size: 18px; }
         .cuenta-item { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 4px;}
         .cuenta-total { margin-top: 15px; text-align: right; font-size: 20px; font-weight: bold; background: #eee; padding: 10px; border-radius: 8px;}
@@ -69,7 +58,9 @@
     </style>
 </head>
 <body>
+
     <div id="contextMenu" class="context-menu"></div>
+
     <div id="modalVistaCuenta" class="modal-bg">
         <div class="modal-cuenta">
             <div class="modal-cuenta-header" id="modalCuentaTitulo">Cuenta Mesa --</div>
@@ -89,8 +80,8 @@
                 <span style="font-weight: bold; color: var(--color-acento);">Modo Edición:</span>
                 <button class="edit-btn" onclick="agregarMesa()">+ Agregar Mesa</button>
                 <button class="edit-btn" onclick="agregarArea()">+ Nueva Área</button>
-                <button class="edit-btn" onclick="eliminarMesaSeleccionada()" style="border-color: #dc3545;">- Eliminar Mesa</button>
-                <span style="font-size: 12px; margin-left: auto; color: rgba(255,255,255,0.6);">(Arrastra las mesas para moverlas)</span>
+                <button class="edit-btn" onclick="eliminarAreaActiva()" style="border-color: #ff9800; color: #ff9800;">- Eliminar Área</button>
+                <button class="edit-btn" onclick="eliminarMesaSeleccionada()" style="border-color: #dc3545; color: #ff4d4d;">- Eliminar Mesa</button>
             </div>
 
             <div class="areas-tabs" id="areasContainer">
@@ -114,6 +105,8 @@
     </div>
 
     <script>
+    
+        // --- CARGAR DISEÑO GLOBAL ---
         function cargarDiseno() {
             const root = document.documentElement;
             const colorTexto = localStorage.getItem('--color-texto');
@@ -133,7 +126,7 @@
         
         let isEditing = false; let mesaSeleccionada = null; let draggedMesa = null;
         let offsetX = 0; let offsetY = 0;
-        let mesaClickeadaActual = null; // Guardar la mesa que clickeamos para el menú contextual
+        let mesaClickeadaActual = null; 
 
         document.addEventListener("DOMContentLoaded", async function() {
             let sesion = localStorage.getItem('meseroActivo');
@@ -146,26 +139,69 @@
                 if(mesero.foto && mesero.foto !== "null" && mesero.foto !== "") fotoDiv.style.backgroundImage = `url(${mesero.foto})`;
                 else fotoDiv.style.backgroundImage = "linear-gradient(45deg, #2c3e50, #fd746c)";
             } else {
-                alert("Por favor inicia sesión primero."); window.location.href = "ZonaAdministrativa/AdminDeshboard.html"; return;
+                alert("Por favor inicia sesión primero."); window.location.href = "Pagina_Principal.html"; return;
             }
 
-            // 1. Cargamos las mesas de la base de datos
             await cargarComedor();
 
-            // 2. Revisamos si el Punto de Venta mandó la instrucción de pintar una mesa de rojo
+            // Revisar si hay un cambio de color pendiente al cargar la página
+            ejecutarComandoMesa();
+        });
+
+        // --- MAGIA EN TIEMPO REAL (SINCRONIZACIÓN CON LA CAJA) ---
+        window.addEventListener('storage', function(e) {
+            // Si la Caja manda la señal, el Comedor la atrapa al instante
+            if (e.key === 'comandoMesa' && e.newValue) {
+                ejecutarComandoMesa();
+            }
+        });
+
+        function ejecutarComandoMesa() {
             let comando = JSON.parse(localStorage.getItem('comandoMesa'));
             if (comando) {
                 document.querySelectorAll('.mesa').forEach(m => {
                     if(m.innerText === comando.nombre) {
-                        m.className = `mesa ${comando.estado}`; // Cambiamos clase a ocupada
+                        m.className = `mesa ${comando.estado}`; // Cambia a amarillo (sucia)
                     }
                 });
                 localStorage.removeItem('comandoMesa');
-                guardarComedor(); // Guardamos el nuevo color en SQL Server
+                guardarComedor(); // Guarda el nuevo estado en SQL Server
             }
-        });
+        }
 
-        // --- LÓGICA DEL MENÚ CONTEXTUAL DE SOFTRESTAURANT ---
+        // --- RESTRICCIÓN DE SEGURIDAD POR CARGO ---
+        function toggleEditMode() {
+            let mesero = JSON.parse(localStorage.getItem('meseroActivo'));
+
+            if (!isEditing) {
+                if (!mesero || mesero.cargo.toLowerCase() !== 'administrador') {
+                    alert("🔒 ACCESO DENEGADO\nSolo el personal con cargo de 'Administrador' puede editar la distribución del comedor.");
+                    return; 
+                }
+            }
+
+            isEditing = !isEditing; 
+            contextMenu.style.display = 'none';
+
+            if (isEditing) { 
+                floorPlan.classList.add('edit-mode'); 
+                editTools.style.display = 'flex'; 
+                btnEditarComedor.style.background = "var(--color-acento)"; 
+            } else { 
+                floorPlan.classList.remove('edit-mode'); 
+                editTools.style.display = 'none'; 
+                btnEditarComedor.style.background = "rgba(0, 0, 0, 0.6)"; 
+                quitarSeleccionMesas(); 
+            }
+            
+            document.querySelectorAll('.mesa').forEach(mesa => mesa.style.cursor = isEditing ? 'grab' : 'pointer');
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.setAttribute('draggable', isEditing);
+                btn.style.cursor = isEditing ? 'move' : 'pointer';
+            });
+        }
+
+        // --- LÓGICA DEL MENÚ CONTEXTUAL ---
         floorPlan.addEventListener('click', function(e) {
             if (isEditing) { contextMenu.style.display = 'none'; return; }
 
@@ -175,14 +211,12 @@
                 let estado = e.target.classList.contains('ocupada') ? 'ocupada' : e.target.classList.contains('sucia') ? 'sucia' : 'libre';
 
                 if (estado === 'libre') {
-                    // Si está verde, abrimos el menú directo
                     abrirVenta(nombreMesa, 'libre');
                 } else {
-                    // Si está roja o amarilla, abrimos el menú contextual donde está el ratón
                     mostrarMenuOpciones(e.pageX, e.pageY, nombreMesa, estado);
                 }
             } else {
-                contextMenu.style.display = 'none'; // Si clickea fuera, esconder menú
+                contextMenu.style.display = 'none'; 
             }
         });
 
@@ -192,17 +226,16 @@
             contextMenu.style.top = y + 'px';
             contextMenu.innerHTML = '';
 
-            if (estado === 'ocupada') { // Mesa en Rojo
+            if (estado === 'ocupada') { 
                 contextMenu.innerHTML += `<button class="context-btn" onclick="abrirVenta('${nombre}', 'ocupada')">📝 Capturar</button>`;
                 contextMenu.innerHTML += `<button class="context-btn" onclick="consultarCuenta('${nombre}')">📋 Consultar cuenta</button>`;
                 contextMenu.innerHTML += `<button class="context-btn" onclick="imprimirCuentaComedor()">🖨️ Imprimir cuenta</button>`;
                 contextMenu.innerHTML += `<button class="context-btn" onclick="alert('Función de cambio de mesero en desarrollo')">👤 Cambiar de mesero</button>`;
-            } else if (estado === 'sucia') { // Mesa en Amarillo
+            } else if (estado === 'sucia') { 
                 contextMenu.innerHTML += `<button class="context-btn" onclick="reabrirCuenta()">🔄 Reabrir cuenta</button>`;
             }
         }
 
-        // ACCIONES DEL MENÚ CONTEXTUAL
         function abrirVenta(nombre, estado) {
             localStorage.setItem('mesaActiva', JSON.stringify({ nombre: nombre, estado: estado }));
             window.location.href = "PuntoVenta.html";
@@ -227,27 +260,38 @@
             }
         }
         function cerrarModalCuenta() { document.getElementById('modalVistaCuenta').style.display = 'none'; }
-
-        function imprimirCuentaComedor() {
-            contextMenu.style.display = 'none';
-            alert("Enviando cuenta a impresora de caja...");
-            mesaClickeadaActual.className = "mesa sucia"; // Cambia a amarillo
-            guardarComedor();
+        
+        function imprimirCuentaComedor() { 
+            contextMenu.style.display = 'none'; 
+            alert("Enviando cuenta a impresora de caja..."); 
+            mesaClickeadaActual.className = "mesa sucia"; 
+            guardarComedor(); 
+        }
+        
+        function reabrirCuenta() { 
+            contextMenu.style.display = 'none'; 
+            mesaClickeadaActual.className = "mesa ocupada"; 
+            guardarComedor(); 
+        }
+        
+        function cerrarSesion() { 
+            if(confirm("¿Estás seguro que deseas cerrar sesión?")) { 
+                localStorage.removeItem('meseroActivo'); 
+                window.location.href = "../Pagina_Principal/Pagina_Principal.html"; 
+            } 
         }
 
-        function reabrirCuenta() {
-            contextMenu.style.display = 'none';
-            mesaClickeadaActual.className = "mesa ocupada"; // Cambia a rojo
-            guardarComedor();
-        }
-
-
-        // --- FUNCIONES DE BASE DE DATOS (MANTENIDAS) ---
-        function cerrarSesion() { if(confirm("¿Estás seguro que deseas cerrar sesión?")) { localStorage.removeItem('meseroActivo'); window.location.href = "../Pagina_Principal/Pagina_Principal.html"; } }
-
+       // --- GESTIÓN DE ÁREAS Y MESAS ACTUALIZADA ---
         async function guardarComedor() {
             let configuracion = { areas: [], mesas: [] };
+            
+            // 1. Guardamos el orden exacto de las pestañas
             document.querySelectorAll('.tab-btn').forEach(btn => configuracion.areas.push(btn.innerText));
+            
+            // 2. Guardamos este orden en el navegador para que no se pierda al recargar
+            localStorage.setItem('ordenAreasVisual', JSON.stringify(configuracion.areas));
+            
+            // 3. Recopilamos las mesas
             document.querySelectorAll('.area-layer').forEach(layer => {
                 let nombreArea = layer.id.replace('layer-', '');
                 layer.querySelectorAll('.mesa').forEach(mesa => {
@@ -266,10 +310,60 @@
                 let res = await req.json();
                 if (res.status === 'success') {
                     areasContainer.innerHTML = ''; floorPlan.innerHTML = '';
+                    
+                    let areasBD = res.areas;
+                    if(areasBD.length === 0) { areasBD = ["Comedor Principal"]; }
+
+                    // RECUPERAR EL ORDEN VISUAL DEL NAVEGADOR
+                    let ordenGuardado = JSON.parse(localStorage.getItem('ordenAreasVisual'));
+                    if (ordenGuardado) {
+                        areasBD = areasBD.sort((a, b) => {
+                            let posA = ordenGuardado.indexOf(a);
+                            let posB = ordenGuardado.indexOf(b);
+                            if (posA === -1) posA = 999; 
+                            if (posB === -1) posB = 999;
+                            return posA - posB;
+                        });
+                    }
+
+                    // Dibujar pestañas en el orden correcto
+                    areasBD.forEach((nombreArea, index) => {
+                        let btn = document.createElement('button'); btn.className = index === 0 ? 'tab-btn active' : 'tab-btn';
+                        btn.innerText = nombreArea; 
+                        if(isEditing) { btn.setAttribute('draggable', true); btn.style.cursor = 'move'; }
+                        btn.onclick = function() { cambiarArea(nombreArea); }; 
+                        areasContainer.appendChild(btn);
+                        
+                        let layer = document.createElement('div'); layer.className = index === 0 ? 'area-layer active' : 'area-layer';
+                        layer.id = 'layer-' + nombreArea; floorPlan.appendChild(layer);
+                    });
+
+                    // Dibujar mesas
+                    res.mesas.forEach(m => {
+                        let capa = document.getElementById('layer-' + m.area);
+                        if (capa) {
+                            let mesa = document.createElement('div'); mesa.className = `mesa ${m.estado}`;
+                            mesa.style.left = m.left; mesa.style.top = m.top; mesa.style.cursor = isEditing ? 'grab' : 'pointer';
+                            mesa.innerText = m.nombre; capa.appendChild(mesa);
+                        }
+                    });
+                }
+            } catch(e) {}
+        }
+        async function cargarComedor() {
+            try {
+                let req = await fetch('cargar_comedor.php');
+                let res = await req.json();
+                if (res.status === 'success') {
+                    areasContainer.innerHTML = ''; floorPlan.innerHTML = '';
                     if(res.areas.length === 0) { res.areas = ["Comedor Principal"]; }
                     res.areas.forEach((nombreArea, index) => {
                         let btn = document.createElement('button'); btn.className = index === 0 ? 'tab-btn active' : 'tab-btn';
-                        btn.innerText = nombreArea; btn.onclick = function() { cambiarArea(nombreArea); }; areasContainer.appendChild(btn);
+                        btn.innerText = nombreArea; 
+                        if(isEditing) { btn.setAttribute('draggable', true); btn.style.cursor = 'move'; }
+                        btn.onclick = function() { cambiarArea(nombreArea); }; 
+                        areasContainer.appendChild(btn);
+                        
                         let layer = document.createElement('div'); layer.className = index === 0 ? 'area-layer active' : 'area-layer';
                         layer.id = 'layer-' + nombreArea; floorPlan.appendChild(layer);
                     });
@@ -285,44 +379,111 @@
             } catch(e) {}
         }
 
-        // --- MODO EDICIÓN DE MESAS (MANTENIDO) ---
-        function toggleEditMode() {
-            // SI VAMOS A ENTRAR AL MODO EDICIÓN, PEDIMOS CONTRASEÑA
-            if (!isEditing) {
-                let pass = prompt("Protección de Sistema:\nIngrese contraseña de administrador para editar el comedor:");
-                if (pass !== "4375879703") {
-                    alert("Contraseña incorrecta. Acceso denegado.");
-                    return; // Si no es la correcta, cancelamos la acción
-                }
-            }
-
-            // Si es la correcta o estamos apagando el modo edición, continuamos normal:
-            isEditing = !isEditing; 
-            contextMenu.style.display = 'none';
-            if (isEditing) { 
-                floorPlan.classList.add('edit-mode'); 
-                editTools.style.display = 'flex'; 
-                btnEditarComedor.style.background = "var(--color-acento)"; 
-            } else { 
-                floorPlan.classList.remove('edit-mode'); 
-                editTools.style.display = 'none'; 
-                btnEditarComedor.style.background = "rgba(0, 0, 0, 0.6)"; 
-                quitarSeleccionMesas(); 
-            }
-            document.querySelectorAll('.mesa').forEach(mesa => mesa.style.cursor = isEditing ? 'grab' : 'pointer');
-        }
-
         function cambiarArea(nombreArea) {
             quitarSeleccionMesas(); contextMenu.style.display = 'none';
             document.querySelectorAll('.tab-btn').forEach(btn => { if(btn.innerText === nombreArea) btn.classList.add('active'); else btn.classList.remove('active'); });
             document.querySelectorAll('.area-layer').forEach(layer => { if(layer.id === 'layer-' + nombreArea) layer.classList.add('active'); else layer.classList.remove('active'); });
         }
 
-        function agregarArea() { const n = prompt("Ingresa el nombre de la nueva área:"); if (n && n.trim() !== "") { if(document.getElementById('layer-' + n)) return alert("Área ya existe."); const b = document.createElement('button'); b.classList.add('tab-btn'); b.innerText = n; b.onclick = function() { cambiarArea(n); }; areasContainer.appendChild(b); const l = document.createElement('div'); l.classList.add('area-layer'); l.id = 'layer-' + n; floorPlan.appendChild(l); cambiarArea(n); guardarComedor(); } }
+        function agregarArea() { 
+            const n = prompt("Ingresa el nombre de la nueva área:"); 
+            if (n && n.trim() !== "") { 
+                if(document.getElementById('layer-' + n)) return alert("Área ya existe."); 
+                const b = document.createElement('button'); 
+                b.classList.add('tab-btn'); 
+                b.innerText = n; 
+                b.setAttribute('draggable', true); b.style.cursor = 'move'; 
+                b.onclick = function() { cambiarArea(n); }; 
+                areasContainer.appendChild(b); 
+                const l = document.createElement('div'); l.classList.add('area-layer'); l.id = 'layer-' + n; floorPlan.appendChild(l); 
+                cambiarArea(n); guardarComedor(); 
+            } 
+        }
+        function eliminarAreaActiva() {
+            const activeTab = document.querySelector('.tab-btn.active');
+            if (!activeTab) return;
+            
+            const nombreArea = activeTab.innerText;
+            
+            // Protección de seguridad
+            if (nombreArea === 'Comedor Principal') { 
+                alert("🔒 Protección: No puedes eliminar el área predeterminada 'Comedor Principal'."); 
+                return; 
+            }
+            
+            // Confirmación y borrado
+            if (confirm(`⚠️ ¿Estás seguro de que deseas eliminar el área '${nombreArea}' y TODAS las mesas que contiene?`)) {
+                activeTab.remove(); // Borra la pestaña visualmente
+                
+                const layer = document.getElementById('layer-' + nombreArea);
+                if (layer) layer.remove(); // Borra las mesas de esa pestaña visualmente
+                
+                cambiarArea('Comedor Principal'); // Regresa a la vista principal
+                guardarComedor(); // Le avisa al PHP que aplique los cambios en SQL Server
+            }
+        }
+
+       function eliminarMesaSeleccionada() {
+            if (mesaSeleccionada) {
+                // --- NUEVA RESTRICCIÓN DE ESTADO ---
+                if (!mesaSeleccionada.classList.contains('libre')) {
+                    alert("⛔ OPERACIÓN DENEGADA\nNo puedes eliminar una mesa que está Ocupada (Roja) o con Cuenta Pendiente (Amarilla).\nDebes cobrarla o liberarla antes de eliminarla del plano.");
+                    return; // Detenemos la ejecución aquí
+                }
+
+                // Si está libre (verde), procedemos a borrarla
+                if(confirm("¿Eliminar mesa " + mesaSeleccionada.innerText + "?")) {
+                    mesaSeleccionada.remove(); 
+                    mesaSeleccionada = null; 
+                    guardarComedor(); 
+                }
+            } else {
+                alert("Selecciona una mesa haciendo clic sobre ella primero.");
+            }
+        }
+
         function agregarMesa() { const c = document.querySelector('.area-layer.active'); if(!c) return alert("Selecciona un área."); let n = prompt("Identificador de la mesa:"); if (!n || n.trim() === "") return; n = n.trim(); let e = false; c.querySelectorAll('.mesa').forEach(m => { if(m.innerText === n) e = true; }); if(e) return alert("Mesa ya existe."); const m = document.createElement('div'); m.classList.add('mesa', 'libre'); m.style.left = '200px'; m.style.top = '200px'; m.style.cursor = isEditing ? 'grab' : 'pointer'; m.innerText = n; c.appendChild(m); quitarSeleccionMesas(); m.classList.add('selected'); mesaSeleccionada = m; guardarComedor(); }
         function eliminarMesaSeleccionada() { if (mesaSeleccionada) { if(confirm("¿Eliminar mesa " + mesaSeleccionada.innerText + "?")) { mesaSeleccionada.remove(); mesaSeleccionada = null; guardarComedor(); } } else { alert("Selecciona una mesa primero."); } }
         function quitarSeleccionMesas() { document.querySelectorAll('.mesa').forEach(m => m.classList.remove('selected')); mesaSeleccionada = null; }
 
+        // --- DRAG AND DROP (Arrastrar Pestañas) ---
+        let draggedTab = null;
+
+        areasContainer.addEventListener('dragstart', (e) => {
+            if (!isEditing) { e.preventDefault(); return; }
+            if (e.target.classList.contains('tab-btn')) {
+                draggedTab = e.target;
+                setTimeout(() => e.target.classList.add('dragging'), 0);
+            }
+        });
+
+        areasContainer.addEventListener('dragend', (e) => {
+            if (e.target.classList.contains('tab-btn')) {
+                e.target.classList.remove('dragging');
+                draggedTab = null;
+                guardarComedor();
+            }
+        });
+
+        areasContainer.addEventListener('dragover', (e) => {
+            e.preventDefault(); 
+            if (!isEditing || !draggedTab) return;
+            const afterElement = getDragAfterElement(areasContainer, e.clientX);
+            if (afterElement == null) { areasContainer.appendChild(draggedTab); } 
+            else { areasContainer.insertBefore(draggedTab, afterElement); }
+        });
+
+        function getDragAfterElement(container, x) {
+            const draggableElements = [...container.querySelectorAll('.tab-btn:not(.dragging)')];
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = x - box.left - box.width / 2;
+                if (offset < 0 && offset > closest.offset) { return { offset: offset, element: child }; } 
+                else { return closest; }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        // --- DRAG AND DROP (Arrastrar Mesas) ---
         floorPlan.addEventListener('mousedown', function(e) {
             if (!isEditing) return; 
             if (e.target.classList.contains('mesa')) { quitarSeleccionMesas(); draggedMesa = e.target; draggedMesa.classList.add('selected'); mesaSeleccionada = draggedMesa; draggedMesa.style.cursor = 'grabbing'; const rect = draggedMesa.getBoundingClientRect(); offsetX = e.clientX - rect.left; offsetY = e.clientY - rect.top; } 
@@ -330,7 +491,8 @@
         });
 
         document.addEventListener('mousemove', function(e) { if (draggedMesa && isEditing) { const planRect = floorPlan.getBoundingClientRect(); let newX = e.clientX - planRect.left - offsetX; let newY = e.clientY - planRect.top - offsetY; const maxLeft = planRect.width - draggedMesa.offsetWidth; const maxTop = planRect.height - draggedMesa.offsetHeight; newX = Math.max(0, Math.min(newX, maxLeft)); newY = Math.max(0, Math.min(newY, maxTop)); draggedMesa.style.left = newX + 'px'; draggedMesa.style.top = newY + 'px'; } });
-        document.addEventListener('mouseup', function() { if (draggedMesa) { draggedMesa.style.cursor = isEditing ? 'grab' : 'pointer'; draggedMesa = null; guardarComedor(); } });
+        document.addEventListener('mouseup', function() { if (draggedMesa) { draggedMesa.style.cursor = isEditing ? 'move' : 'pointer'; draggedMesa = null; guardarComedor(); } });
+    
     </script>
 </body>
 </html>

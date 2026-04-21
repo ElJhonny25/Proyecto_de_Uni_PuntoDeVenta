@@ -1,5 +1,4 @@
 <?php
-// Conexion/guardar_comedor.php
 require_once '../Conexion.php';
 $data = json_decode(file_get_contents('php://input'), true);
 
@@ -7,56 +6,61 @@ if (isset($data['areas']) && isset($data['mesas'])) {
     try {
         $conn->beginTransaction();
 
-        // 1. Limpiamos las mesas anteriores (NO borramos las áreas para no romper otros registros)
-        $conn->exec("DELETE FROM MESA");
+        // 1. BORRADO LÓGICO: "Apagamos" las mesas que ya no están en la pantalla
+        $nombresMesas = array_column($data['mesas'], 'nombre');
+        if (count($nombresMesas) > 0) {
+            $placeholders = implode(',', array_fill(0, count($nombresMesas), '?'));
+            $sqlDelM = "UPDATE MESA SET ACTIVO = 0 WHERE IDENTIFICADOR NOT IN ($placeholders)";
+            $stmtDelM = $conn->prepare($sqlDelM);
+            $stmtDelM->execute($nombresMesas);
+        } else {
+            $conn->exec("UPDATE MESA SET ACTIVO = 0");
+        }
 
-        // 2. Sincronizamos las Áreas y guardamos sus IDs en un diccionario
-        $mapaAreas = [];
-        $stmtBuscaArea = $conn->prepare("SELECT ID_AREA FROM AREA WHERE NOMBRE_AREA = :nombre");
-        $stmtInsertaArea = $conn->prepare("INSERT INTO AREA (NOMBRE_AREA) OUTPUT INSERTED.ID_AREA VALUES (:nombre)");
+        // 2. REGISTRAR O ACTUALIZAR ÁREAS (CORREGIDO PARA SQL SERVER)
+        foreach ($data['areas'] as $nombreArea) {
+            $stmtA = $conn->prepare("SELECT ID_AREA FROM AREA WHERE NOMBRE_AREA = ?");
+            $stmtA->execute([$nombreArea]);
+            $areaExistente = $stmtA->fetchColumn(); // Extrae el ID directamente
 
-        foreach ($data['areas'] as $areaNombre) {
-            $stmtBuscaArea->execute([':nombre' => $areaNombre]);
-            $rowArea = $stmtBuscaArea->fetch(PDO::FETCH_ASSOC);
-
-            if ($rowArea) {
-                // El área ya existe, guardamos su ID
-                $mapaAreas[$areaNombre] = $rowArea['ID_AREA'];
-            } else {
-                // Es un área nueva, la insertamos y atrapamos su nuevo ID
-                $stmtInsertaArea->execute([':nombre' => $areaNombre]);
-                $rowInsert = $stmtInsertaArea->fetch(PDO::FETCH_ASSOC);
-                $mapaAreas[$areaNombre] = $rowInsert['ID_AREA'];
+            // Si no devolvió un ID, significa que no existe, entonces la insertamos
+            if (!$areaExistente) {
+                $conn->prepare("INSERT INTO AREA (NOMBRE_AREA) VALUES (?)")->execute([$nombreArea]);
             }
         }
 
-        // 3. Guardamos las Mesas
-        $sqlMesa = "INSERT INTO MESA (IDENTIFICADOR, ID_AREA, POSICION_X, POSICION_Y, ESTADO) 
-                    VALUES (:identificador, :id_area, :px, :py, :estado)";
-        $stmtMesa = $conn->prepare($sqlMesa);
-        
+        // 3. REGISTRAR, ACTUALIZAR Y "ENCENDER" MESAS (CORREGIDO PARA SQL SERVER)
         foreach ($data['mesas'] as $mesa) {
-            // Limpiamos los "px" para que SQL Server reciba un número entero (INT)
+            $stmtA2 = $conn->prepare("SELECT ID_AREA FROM AREA WHERE NOMBRE_AREA = ?");
+            $stmtA2->execute([$mesa['area']]);
+            $idArea = $stmtA2->fetchColumn();
+
             $posX = (int) str_replace('px', '', $mesa['left']);
             $posY = (int) str_replace('px', '', $mesa['top']);
-            $idArea = $mapaAreas[$mesa['area']]; // Usamos la llave foránea correcta
 
-            $stmtMesa->execute([
-                ':identificador' => $mesa['nombre'],
-                ':id_area' => $idArea,
-                ':px' => $posX,
-                ':py' => $posY,
-                ':estado' => $mesa['estado']
-            ]);
+            $stmtM = $conn->prepare("SELECT ID_MESA FROM MESA WHERE IDENTIFICADOR = ?");
+            $stmtM->execute([$mesa['nombre']]);
+            $idMesaExistente = $stmtM->fetchColumn(); // Extrae el ID si existe
+
+            if ($idMesaExistente) {
+                // Si la mesa ya tiene un ID, la actualizamos usando su ID
+                $sqlUpd = "UPDATE MESA SET ID_AREA = ?, POSICION_X = ?, POSICION_Y = ?, ESTADO = ?, ACTIVO = 1 WHERE ID_MESA = ?";
+                $conn->prepare($sqlUpd)->execute([$idArea, $posX, $posY, $mesa['estado'], $idMesaExistente]);
+            } else {
+                // Si es totalmente nueva, la insertamos
+                $sqlIns = "INSERT INTO MESA (IDENTIFICADOR, ID_AREA, POSICION_X, POSICION_Y, ESTADO, ACTIVO) VALUES (?, ?, ?, ?, ?, 1)";
+                $conn->prepare($sqlIns)->execute([$mesa['nombre'], $idArea, $posX, $posY, $mesa['estado']]);
+            }
         }
 
         $conn->commit();
         echo json_encode(["status" => "success"]);
-    } catch (PDOException $e) {
+
+    } catch (Exception $e) {
         $conn->rollBack();
         echo json_encode(["status" => "error", "message" => $e->getMessage()]);
     }
 } else {
-    echo json_encode(["status" => "error", "message" => "Faltan datos."]);
+    echo json_encode(["status" => "error", "message" => "Datos incompletos"]);
 }
 ?>

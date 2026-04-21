@@ -1,35 +1,31 @@
 <?php
-// Conexion/cargar_comedor.php
 require_once '../Conexion.php';
 
 try {
-    // 1. Traer todas las áreas
-    $areas = [];
-    $stmtA = $conn->query("SELECT NOMBRE_AREA FROM AREA");
-    while ($row = $stmtA->fetch(PDO::FETCH_ASSOC)) {
-        $areas[] = $row['NOMBRE_AREA'];
-    }
+    $stmtA = $conn->query("SELECT NOMBRE_AREA FROM AREA ORDER BY ID_AREA ASC");
+    $areas = $stmtA->fetchAll(PDO::FETCH_COLUMN);
 
-    // 2. Traer las mesas con el nombre de su área (haciendo JOIN)
-    $mesas = [];
-    $sqlM = "SELECT m.IDENTIFICADOR as nombre, a.NOMBRE_AREA as area, m.POSICION_X, m.POSICION_Y, m.ESTADO 
-             FROM MESA m
-             JOIN AREA a ON m.ID_AREA = a.ID_AREA";
-             
-    $stmtM = $conn->query($sqlM);
+    // Solo cargamos las mesas que estén activas
+    $stmtM = $conn->query("SELECT M.IDENTIFICADOR as nombre, A.NOMBRE_AREA as area, M.POSICION_X, M.POSICION_Y, M.ESTADO 
+                           FROM MESA M 
+                           INNER JOIN AREA A ON M.ID_AREA = A.ID_AREA 
+                           WHERE M.ACTIVO = 1");
+    $mesasDB = $stmtM->fetchAll(PDO::FETCH_ASSOC);
     
-    while ($row = $stmtM->fetch(PDO::FETCH_ASSOC)) {
+    $mesas = [];
+    foreach ($mesasDB as $m) {
         $mesas[] = [
-            "nombre" => $row['nombre'],
-            "area" => $row['area'],
-            "left" => $row['POSICION_X'] . "px", // Le volvemos a pegar los "px" para el HTML
-            "top" => $row['POSICION_Y'] . "px",
-            "estado" => $row['ESTADO']
+            "nombre" => $m['nombre'],
+            "area" => $m['area'],
+            "left" => $m['POSICION_X'] . "px",
+            "top" => $m['POSICION_Y'] . "px",
+            "estado" => $m['ESTADO']
         ];
     }
 
     echo json_encode(["status" => "success", "areas" => $areas, "mesas" => $mesas]);
-} catch (PDOException $e) {
-    echo json_encode(["status" => "error", "message" => "Error de BD: " . $e->getMessage()]);
+
+} catch (Exception $e) {
+    echo json_encode(["status" => "error", "message" => $e->getMessage()]);
 }
 ?>
