@@ -143,6 +143,7 @@ try {
                 <option value="2">Capitán de meseros</option>
                 <option value="3">Administrador</option>
                 <option value="4">Gerente</option>
+                <option value="5">Repartidor</option>
             </select>
             
             <div style="display: flex; justify-content: space-between; margin-top: 15px;">

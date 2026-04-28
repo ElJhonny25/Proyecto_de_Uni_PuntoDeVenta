@@ -1,12 +1,13 @@
 <?php
-require_once '../Conexion.php';
+// Salimos de la carpeta Comedor para buscar la Conexion
+require_once '../Conexion.php'; 
 $data = json_decode(file_get_contents('php://input'), true);
 
 if (isset($data['areas']) && isset($data['mesas'])) {
     try {
         $conn->beginTransaction();
 
-        // 1. BORRADO LÓGICO: "Apagamos" las mesas que ya no están en la pantalla
+        // 1. BORRADO LÓGICO DE MESAS: "Apagamos" las mesas que ya no están en la pantalla
         $nombresMesas = array_column($data['mesas'], 'nombre');
         if (count($nombresMesas) > 0) {
             $placeholders = implode(',', array_fill(0, count($nombresMesas), '?'));
@@ -17,19 +18,28 @@ if (isset($data['areas']) && isset($data['mesas'])) {
             $conn->exec("UPDATE MESA SET ACTIVO = 0");
         }
 
-        // 2. REGISTRAR O ACTUALIZAR ÁREAS (CORREGIDO PARA SQL SERVER)
+        // 2. ELIMINAR ÁREAS (¡Esta era la pieza faltante!)
+        // Borramos físicamente de SQL Server las áreas que ya quitaste en la pantalla
+        if (count($data['areas']) > 0) {
+            $placeholdersA = implode(',', array_fill(0, count($data['areas']), '?'));
+            $sqlDelA = "DELETE FROM AREA WHERE NOMBRE_AREA NOT IN ($placeholdersA)";
+            $stmtDelA = $conn->prepare($sqlDelA);
+            $stmtDelA->execute($data['areas']);
+        }
+
+        // 3. REGISTRAR O ACTUALIZAR ÁREAS
         foreach ($data['areas'] as $nombreArea) {
             $stmtA = $conn->prepare("SELECT ID_AREA FROM AREA WHERE NOMBRE_AREA = ?");
             $stmtA->execute([$nombreArea]);
-            $areaExistente = $stmtA->fetchColumn(); // Extrae el ID directamente
+            $areaExistente = $stmtA->fetchColumn(); 
 
-            // Si no devolvió un ID, significa que no existe, entonces la insertamos
+            // Si no devolvió un ID, la insertamos
             if (!$areaExistente) {
                 $conn->prepare("INSERT INTO AREA (NOMBRE_AREA) VALUES (?)")->execute([$nombreArea]);
             }
         }
 
-        // 3. REGISTRAR, ACTUALIZAR Y "ENCENDER" MESAS (CORREGIDO PARA SQL SERVER)
+        // 4. REGISTRAR, ACTUALIZAR Y "ENCENDER" MESAS
         foreach ($data['mesas'] as $mesa) {
             $stmtA2 = $conn->prepare("SELECT ID_AREA FROM AREA WHERE NOMBRE_AREA = ?");
             $stmtA2->execute([$mesa['area']]);
@@ -40,14 +50,12 @@ if (isset($data['areas']) && isset($data['mesas'])) {
 
             $stmtM = $conn->prepare("SELECT ID_MESA FROM MESA WHERE IDENTIFICADOR = ?");
             $stmtM->execute([$mesa['nombre']]);
-            $idMesaExistente = $stmtM->fetchColumn(); // Extrae el ID si existe
+            $idMesaExistente = $stmtM->fetchColumn(); 
 
             if ($idMesaExistente) {
-                // Si la mesa ya tiene un ID, la actualizamos usando su ID
                 $sqlUpd = "UPDATE MESA SET ID_AREA = ?, POSICION_X = ?, POSICION_Y = ?, ESTADO = ?, ACTIVO = 1 WHERE ID_MESA = ?";
                 $conn->prepare($sqlUpd)->execute([$idArea, $posX, $posY, $mesa['estado'], $idMesaExistente]);
             } else {
-                // Si es totalmente nueva, la insertamos
                 $sqlIns = "INSERT INTO MESA (IDENTIFICADOR, ID_AREA, POSICION_X, POSICION_Y, ESTADO, ACTIVO) VALUES (?, ?, ?, ?, ?, 1)";
                 $conn->prepare($sqlIns)->execute([$mesa['nombre'], $idArea, $posX, $posY, $mesa['estado']]);
             }

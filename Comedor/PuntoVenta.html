@@ -313,17 +313,52 @@
         }
 
         // --- NUEVO: LÓGICA DE ENVIAR A COCINA ---
-        function enviarACocina() {
-            if(cuentaActual.length === 0) { alert("Agrega productos al ticket antes de comandar."); return; }
-            
-            // 1. Guardamos la cuenta vinculada a esta mesa específica en memoria
-            localStorage.setItem('cuenta_' + nombreMesaActual, JSON.stringify(cuentaActual));
+        // En tu archivo PuntoVenta.html, busca la función que guarda el pedido
+function enviarACocina() {
+    // 1. Verificamos que la cuenta no esté vacía
+    if (!cuentaActual || cuentaActual.length === 0) {
+        alert("⚠️ Agrega al menos un producto antes de comandar.");
+        return; 
+    }
 
-            // 2. Le dejamos un "mensaje" al Comedor para que ponga la mesa en rojo (ocupada)
-            localStorage.setItem('comandoMesa', JSON.stringify({ nombre: nombreMesaActual, estado: 'ocupada' }));
+    // 2. Extraemos la información
+    let mesaActualStr = localStorage.getItem('mesaActiva');
+    
+    if (!mesaActualStr) {
+        alert("❌ Error: No se detectó ninguna mesa o cliente activo.");
+        return; 
+    }
 
-            window.location.href = "Comedor.html";
+    // LE CAMBIAMOS EL NOMBRE A 'datosMesa' PARA EVITAR EL CHOQUE
+    let datosMesa = JSON.parse(mesaActualStr);
+    let nombreMesa = datosMesa.nombre;
+
+    // 3. Guardamos los platillos
+    localStorage.setItem('cuenta_' + nombreMesa, JSON.stringify(cuentaActual));
+
+    // =========================================================
+    // 4. EL SEMÁFORO
+    // =========================================================
+    if (datosMesa.tipo === 'delivery') {
+        
+        let infoCliente = localStorage.getItem('clienteDeliveryActivo');
+        
+        if(infoCliente) {
+            localStorage.setItem('info_' + nombreMesa, infoCliente);
         }
+
+        alert("🛵 ¡Pedido a domicilio registrado exitosamente!");
+        window.location.href = '../ZonaAdministrativa/PedidosLlevar.html';
+
+    } else {
+        
+        localStorage.setItem('comandoMesa', JSON.stringify({ nombre: nombreMesa, estado: 'ocupada' }));
+        
+        alert("👨‍🍳 ¡Orden enviada a cocina! La mesa se marcará en rojo.");
+        window.location.href = 'Comedor.html';
+        
+    }
+}
     </script>
 </body>
 </html>

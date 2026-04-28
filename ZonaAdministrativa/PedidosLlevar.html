@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delivery POS - SOFTWADZ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-dark: #12151a; --bg-panel: #1e232b; --text-main: #ffffff; --text-muted: #8b949e; --accent: #ff7f2a; --danger: #dc3545; --success: #28a745; --warning: #ffc107; --info: #17a2b8; }
+        body { margin: 0; font-family: 'Montserrat', sans-serif; color: var(--text-main); background-color: var(--bg-dark); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        
+        /* HEADER */
+        .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 10px 25px; background: #0d1117; border-bottom: 2px solid var(--accent); box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 10; }
+        .titulo-modulo { font-size: 22px; font-weight: 700; color: var(--text-main); letter-spacing: 1px; display: flex; align-items: center; gap: 10px; }
+        .titulo-modulo span { color: var(--accent); }
+        .btn-volver { background: transparent; color: white; border: 1px solid #555; padding: 8px 20px; border-radius: 5px; cursor: pointer; transition: 0.2s; font-weight: 600; }
+        .btn-volver:hover { background: var(--danger); border-color: var(--danger); }
+
+        /* GRID PRINCIPAL */
+        .layout-container { display: flex; flex: 1; overflow: hidden; padding: 15px; gap: 15px; background: radial-gradient(circle at center, #1a1e24 0%, #12151a 100%); }
+
+        /* PANELES COMUNES */
+        .panel { background: var(--bg-panel); border-radius: 12px; border: 1px solid #30363d; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .panel-header { background: #161b22; padding: 12px 15px; font-weight: 700; font-size: 14px; text-transform: uppercase; border-bottom: 1px solid #30363d; color: var(--accent); text-align: center; letter-spacing: 1px;}
+        .panel-body { padding: 15px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+
+        /* COL 1: CAPTURA (25%) */
+        .col-captura { width: 25%; }
+        .input-group { display: flex; flex-direction: column; gap: 4px; }
+        .input-group label { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+        .input-group input { background: #0d1117; border: 1px solid #30363d; color: white; padding: 10px; border-radius: 6px; font-family: inherit; outline: none; transition: 0.2s; }
+        .input-group input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(255,127,42,0.2); }
+        .btn-main { background: var(--accent); color: white; border: none; padding: 15px; border-radius: 6px; font-weight: 700; font-size: 14px; cursor: pointer; margin-top: auto; transition: 0.2s; text-transform: uppercase; }
+        .btn-main:hover { filter: brightness(1.1); transform: translateY(-2px); }
+
+        /* COL 2: MONITOR (30%) */
+        .col-monitor { width: 30%; }
+        .tarjeta-pedido { background: #0d1117; border: 1px solid #30363d; padding: 12px; border-radius: 8px; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; gap: 5px; position: relative; border-left: 4px solid transparent; }
+        .tarjeta-pedido:hover { background: #161b22; }
+        .tarjeta-pedido.active { border-color: var(--accent); background: #1a1e24; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+        
+        .badge { position: absolute; top: 12px; right: 12px; padding: 3px 8px; border-radius: 4px; font-size: 9px; font-weight: 700; letter-spacing: 0.5px; }
+        .badge.prep { background: rgba(220, 53, 69, 0.2); color: #ff6b7b; border: 1px solid rgba(220, 53, 69, 0.5); }
+        .badge.ruta { background: rgba(40, 167, 69, 0.2); color: #47e26d; border: 1px solid rgba(40, 167, 69, 0.5); }
+        
+        .tarjeta-pedido h4 { margin: 0; color: white; font-size: 15px; }
+        .tarjeta-pedido p { margin: 0; font-size: 12px; color: var(--text-muted); }
+        .tarjeta-total { margin-top: 5px; font-size: 14px; font-weight: 700; color: var(--accent); text-align: right; }
+
+        /* COL 3: TICKET Y ACCIONES (45%) */
+        .col-detalle { width: 45%; display: flex; flex-direction: column; gap: 15px; }
+        
+        /* TICKET VISUAL */
+        .ticket-view { background: #f4f4f4; color: #000; border-radius: 8px; flex: 1; display: flex; flex-direction: column; overflow: hidden; font-family: 'Courier New', monospace; }
+        .ticket-header { background: #e0e0e0; padding: 10px; text-align: center; border-bottom: 2px dashed #ccc; }
+        .ticket-header h4 { margin: 0; font-size: 16px; font-weight: 700; }
+        .ticket-info { font-size: 11px; padding: 10px; border-bottom: 1px dashed #ccc; color: #333; }
+        .ticket-items { flex: 1; overflow-y: auto; padding: 10px; }
+        .item-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #ddd; font-size: 12px; align-items: center;}
+        .btn-del { background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; padding: 2px 6px; font-size: 10px; font-weight: bold; margin-left: 5px;}
+        .ticket-footer { background: #e0e0e0; padding: 10px; border-top: 2px dashed #ccc; }
+        
+        /* FINANZAS Y CAMBIO DENTRO DEL TICKET */
+        .finanzas-bar { display: flex; gap: 5px; margin-bottom: 8px; }
+        .btn-fin { flex: 1; background: #333; color: white; border: none; padding: 6px; font-size: 10px; border-radius: 4px; cursor: pointer; font-family: 'Montserrat'; font-weight: bold;}
+        .btn-fin:hover { background: #555; }
+        .caja-cambio { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 5px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 8px; font-family: 'Montserrat';}
+        .caja-cambio input { width: 70px; text-align: right; border: 1px solid #aaa; border-radius: 3px; padding: 4px; font-weight: bold; outline: none; }
+        .total-display { font-size: 22px; font-weight: 700; text-align: right; }
+
+        /* PANEL DE ACCIONES DEL PEDIDO */
+        .acciones-pedido { background: var(--bg-panel); border: 1px solid #30363d; border-radius: 8px; padding: 12px; display: flex; gap: 10px; }
+        .btn-action { flex: 1; padding: 12px; border: none; border-radius: 6px; font-weight: 700; font-size: 12px; text-transform: uppercase; cursor: pointer; transition: 0.2s; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;}
+        .btn-action:disabled { background: #21262d !important; color: #484f58 !important; cursor: not-allowed; border: 1px solid #30363d; }
+        .btn-action:not(:disabled):hover { filter: brightness(1.1); transform: scale(1.02); }
+        .btn-print { background: var(--info); }
+        .btn-dispatch { background: var(--warning); color: #000; }
+        .btn-pay { background: var(--success); }
+        .btn-reopen { background: #6f42c1; }
+
+        /* PANEL GLOBAL: CONTROL DE REPARTIDORES */
+        .panel-repartidor { background: #161b22; border: 1px solid var(--accent); border-radius: 8px; padding: 12px; display: flex; align-items: center; gap: 15px; box-shadow: 0 -5px 15px rgba(0,0,0,0.2); }
+        .rep-info { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+        .rep-info label { font-size: 10px; color: var(--accent); font-weight: 700; letter-spacing: 1px; }
+        .rep-select { background: #0d1117; color: white; border: 1px solid #30363d; padding: 10px; border-radius: 6px; outline: none; font-family: inherit; font-size: 14px; font-weight: 600; }
+        .rep-stats { font-size: 11px; color: var(--text-muted); }
+        .btn-corte { background: var(--success); color: white; border: none; padding: 15px 25px; border-radius: 6px; font-weight: 700; font-size: 14px; cursor: pointer; text-transform: uppercase; transition: 0.2s; white-space: nowrap; }
+        .btn-corte:hover { filter: brightness(1.2); box-shadow: 0 0 15px rgba(40, 167, 69, 0.4); }
+
+        /* MODALES */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-box { background: var(--bg-panel); border: 1px solid var(--accent); border-radius: 12px; padding: 25px; width: 350px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.7); }
+        .modal-box h2 { margin-top: 0; color: white; font-size: 20px;}
+        .modal-box p { color: var(--text-muted); font-size: 14px; margin-bottom: 20px; }
+        .modal-input { width: 80%; padding: 12px; margin-bottom: 20px; border-radius: 6px; border: 1px solid #555; background: #0d1117; color: white; text-align: center; font-size: 18px; outline: none;}
+        .modal-btn-row { display: flex; gap: 10px; justify-content: center; }
+        .modal-btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; flex: 1; transition: 0.2s; text-transform: uppercase;}
+        .modal-btn.cancel { background: #30363d; color: white; }
+        .modal-btn.cancel:hover { background: #484f58; }
+        .modal-btn.ok { background: var(--accent); color: white; }
+        .modal-btn.ok:hover { filter: brightness(1.2); }
+        .modal-btn.green { background: var(--success); color: white; }
+    </style>
+</head>
+<body>
+    <div class="overlay"></div>
+    
+    <div class="top-bar">
+        <div class="titulo-modulo">🛵 <span>SOFTWADZ</span> | Delivery POS</div>
+        <button class="btn-volver" onclick="window.location.href='AdminDashboard.html'">⬅ Volver al Dashboard</button>
+    </div>
+
+    <div class="layout-container">
+        <div class="panel col-captura">
+            <div class="panel-header">📝 Datos del Cliente</div>
+            <div class="panel-body">
+                <div class="input-group"><label>Teléfono *</label><input type="tel" id="cliTelefono" placeholder="10 dígitos" maxlength="10"></div>
+                <div class="input-group"><label>Nombre</label><input type="text" id="cliNombre" placeholder="Público en general"></div>
+                <div class="input-group"><label>Domicilio</label><input type="text" id="cliDomicilio" placeholder="Calle y número"></div>
+                <div class="input-group"><label>Colonia / Ref</label><input type="text" id="cliColonia" placeholder="Referencia"></div>
+                <button class="btn-main" onclick="abrirMenuParaLlevar()">Capturar Orden ➡</button>
+            </div>
+        </div>
+
+        <div class="panel col-monitor">
+            <div class="panel-header">📡 Monitor Activo</div>
+            <div class="panel-body" id="listaPedidosLlevar">
+                </div>
+        </div>
+
+        <div class="col-detalle">
+            
+            <div class="ticket-view">
+                <div class="ticket-header">
+                    <h4 id="detalleTitulo">Seleccione una orden</h4>
+                </div>
+                <div class="ticket-info" id="detalleInfo">Esperando selección...</div>
+                
+                <div class="ticket-items" id="detalleItems"></div>
+                
+                <div class="ticket-footer">
+                    <div class="finanzas-bar">
+                        <button class="btn-fin" id="btnDesc" disabled onclick="aplicarDescuento()">✂️ % Desc</button>
+                        <button class="btn-fin" id="btnIva" disabled onclick="aplicarIVA()">➕ IVA 16%</button>
+                    </div>
+                    
+                    <div class="caja-cambio" id="cajaCambioDiv" style="opacity: 0.5; pointer-events: none;">
+                        <span style="font-size: 11px; font-weight: bold;">¿Paga con? $</span>
+                        <input type="number" id="inputPagaCon" placeholder="0.00" oninput="calcularCambioRapido()">
+                    </div>
+                    <div id="textoCambio" style="text-align: right; font-size: 11px; color: #d32f2f; font-weight: bold; margin-bottom: 5px; display: none;">Llevar cambio: $0.00</div>
+                    
+                    <div class="total-display" id="detalleTotal">TOTAL: $0.00</div>
+                </div>
+            </div>
+
+            <div class="acciones-pedido">
+                <button class="btn-action btn-print" id="btnImprimirLlevar" disabled onclick="imprimirTicketDomicilio()">
+                    <span style="font-size: 18px;">🖨️</span> Imprimir
+                </button>
+                <button class="btn-action btn-dispatch" id="btnCamino" disabled onclick="marcarEnCamino()">
+                    <span style="font-size: 18px;">🛵</span> Despachar
+                </button>
+                <button class="btn-action btn-pay" id="btnCobro" disabled style="display: none;" onclick="liquidarRepartidor()">
+                    <span style="font-size: 18px;">💵</span> Cobrar
+                </button>
+                <button class="btn-action btn-reopen" id="btnReabrir" disabled style="display: none;" onclick="reabrirPedido()">
+                    <span style="font-size: 18px;">🔄</span> Reabrir
+                </button>
+            </div>
+
+            <div class="panel-repartidor">
+                <div class="rep-info">
+                    <label>👤 REPARTIDOR EN TURNO:</label>
+                    <select class="rep-select" id="selectRepartidor" onchange="calcularCargaRepartidor()">
+                        <option value="">-- Seleccionar --</option>
+                    </select>
+                    <span class="rep-stats" id="repStats">Seleccione para ver viajes activos.</span>
+                </div>
+                <button class="btn-corte" onclick="liquidarTodoTurno()">💰 Liquidar Turno</button>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalDescuento">
+        <div class="modal-box">
+            <h2>✂️ Aplicar Descuento</h2>
+            <p>Ingrese el porcentaje a descontar:</p>
+            <input type="number" id="inputDescuento" class="modal-input" placeholder="Ej. 10">
+            <div class="modal-btn-row">
+                <button class="modal-btn cancel" onclick="cerrarModal('modalDescuento')">Cancelar</button>
+                <button class="modal-btn ok" onclick="confirmarDescuento()">Aplicar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalCorte">
+        <div class="modal-box" style="width: 450px;">
+            <h2>💰 Corte de Repartidor</h2>
+            <p id="textoCorte" style="margin-bottom: 10px;"></p>
+            <div style="background: #0d1117; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px dashed var(--success);">
+                <span style="color:var(--text-muted); font-size: 12px;">Total a ingresar a caja:</span><br>
+                <span id="totalCortePantalla" style="font-size: 36px; font-weight: bold; color: var(--success);"></span>
+            </div>
+            <div class="modal-btn-row">
+                <button class="modal-btn cancel" onclick="cerrarModal('modalCorte')">Cancelar</button>
+                <button class="modal-btn green" onclick="ejecutarCorteDefinitivo()">✅ Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // VARIABLES GLOBALES
+        let pedidoSeleccionado = null;
+        let cuentaActualLlevar = []; 
+        let infoClienteActual = {};  
+        let totalActualLlevar = 0;   
+        let descuentoAplicado = 0; 
+        let ivaAplicado = false;
+        let llavesParaBorrarCorte = [];
+
+        // INICIALIZACIÓN
+        document.addEventListener("DOMContentLoaded", () => {
+            cargarRepartidores();
+            cargarMonitorPedidos();
+        });
+
+        // 1. CAPTURA
+        function abrirMenuParaLlevar() {
+            let tel = document.getElementById('cliTelefono').value.trim();
+            if(tel === "") return alert("El número de teléfono es obligatorio.");
+
+            let datosCliente = { 
+                telefono: tel, 
+                nombre: document.getElementById('cliNombre').value.trim(), 
+                domicilio: document.getElementById('cliDomicilio').value.trim(), 
+                colonia: document.getElementById('cliColonia').value.trim(), 
+                tipo: 'delivery' 
+            };
+            localStorage.setItem('clienteDeliveryActivo', JSON.stringify(datosCliente));
+            localStorage.setItem('mesaActiva', JSON.stringify({ nombre: `LLEVAR-${tel}`, estado: 'libre', tipo: 'delivery' }));
+            window.location.href = '../Comedor/PuntoVenta.html';
+        }
+
+        // 2. MONITOR Y CARGA
+        function cargarMonitorPedidos() {
+            const panel = document.getElementById('listaPedidosLlevar');
+            panel.innerHTML = '';
+            let hayPedidos = false;
+
+            for (let i = 0; i < localStorage.length; i++) {
+                let key = localStorage.key(i);
+                if (key.startsWith('cuenta_LLEVAR-')) {
+                    hayPedidos = true;
+                    let idPedido = key.replace('cuenta_LLEVAR-', '');
+                    let cuenta = JSON.parse(localStorage.getItem(key));
+                    let infoCliente = JSON.parse(localStorage.getItem('info_LLEVAR-' + idPedido)) || { nombre: 'Cliente', colonia: 'Local' };
+                    let estado = localStorage.getItem('estado_LLEVAR-' + idPedido) || 'preparando';
+                    let repAsignado = localStorage.getItem('repartidor_LLEVAR-' + idPedido);
+                    
+                    let total = 0; cuenta.forEach(p => total += p.subtotal);
+
+                    let card = document.createElement('div');
+                    card.className = `tarjeta-pedido ${estado}`;
+                    card.id = `card-${idPedido}`;
+                    
+                    let badgeHTML = estado === 'preparando' ? '<span class="badge prep">PREPARANDO</span>' : '<span class="badge ruta">EN RUTA</span>';
+                    
+                    card.innerHTML = `
+                        ${badgeHTML}
+                        <h4>Folio: ${idPedido}</h4>
+                        <p>👤 ${infoCliente.nombre || 'Gral'}</p>
+                        <p>📍 ${infoCliente.colonia || '-'}</p>
+                        <div class="tarjeta-total">$${total.toFixed(2)}</div>
+                    `;
+                    card.onclick = () => verDetalle(idPedido, cuenta, infoCliente, total, estado);
+                    panel.appendChild(card);
+                }
+            }
+            if(!hayPedidos) panel.innerHTML = '<div style="text-align:center; color:var(--text-muted); margin-top:20px; font-size:14px;">No hay comandas activas.</div>';
+            calcularCargaRepartidor(); // Actualiza estadísticas si hay cambios
+        }
+
+        async function cargarRepartidores() {
+            try {
+                let req = await fetch('cargar_repartidor.php');
+                let res = await req.json();
+                let select = document.getElementById('selectRepartidor');
+                if(res.status === 'success') {
+                    res.data.forEach(rep => {
+                        let opt = document.createElement('option');
+                        opt.value = rep.ID_EMPLEADO;
+                        opt.innerText = rep.NOMBRE;
+                        select.appendChild(opt);
+                    });
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function calcularCargaRepartidor() {
+            let idRep = document.getElementById('selectRepartidor').value;
+            let stats = document.getElementById('repStats');
+            if(!idRep) { stats.innerText = "Seleccione para ver viajes activos."; return; }
+            
+            let viajes = 0;
+            for (let i = 0; i < localStorage.length; i++) {
+                let key = localStorage.key(i);
+                if (key.startsWith('repartidor_LLEVAR-') && localStorage.getItem(key) === idRep) {
+                    viajes++;
+                }
+            }
+            stats.innerHTML = `Viajes en ruta asignados: <b style="color:var(--warning)">${viajes}</b>`;
+        }
+
+        // 3. DETALLE Y LÓGICA DE BOTONES
+        function verDetalle(idPedido, cuenta, infoCliente, total, estado) {
+            pedidoSeleccionado = idPedido;
+            cuentaActualLlevar = cuenta;
+            infoClienteActual = infoCliente;
+            
+            totalActualLlevar = 0;
+            cuenta.forEach(p => totalActualLlevar += p.subtotal);
+            descuentoAplicado = 0; 
+            ivaAplicado = false;
+
+            // UI Activa
+            document.querySelectorAll('.tarjeta-pedido').forEach(c => c.classList.remove('active'));
+            document.getElementById(`card-${idPedido}`).classList.add('active');
+
+            // Llenar Ticket
+            document.getElementById('detalleTitulo').innerText = `Folio: ${idPedido}`;
+            document.getElementById('detalleInfo').innerHTML = `<b>Cliente:</b> ${infoCliente.nombre || 'Gral'}<br><b>Dir:</b> ${infoCliente.domicilio || '-'}<br><b>Col:</b> ${infoCliente.colonia || '-'}`;
+
+            let htmlItems = "";
+            cuenta.forEach((i, index) => { 
+                let btnX = (estado === 'preparando') ? `<button class="btn-del" title="Cancelar" onclick="cancelarPlatillo(${index})">X</button>` : '';
+                htmlItems += `<div class="item-row"><span>${i.cantidad}x ${i.nombre} ${btnX}</span><span>$${i.subtotal.toFixed(2)}</span></div>`; 
+            });
+            document.getElementById('detalleItems').innerHTML = htmlItems;
+            
+            // Restablecer Finanzas
+            document.getElementById('inputPagaCon').value = '';
+            document.getElementById('textoCambio').style.display = 'none';
+            actualizarTotalVista();
+
+            // CONTROL DE BOTONES EXCLUSIVO DEL PEDIDO
+            let btnImp = document.getElementById('btnImprimirLlevar');
+            let btnCamino = document.getElementById('btnCamino');
+            let btnCobro = document.getElementById('btnCobro');
+            let btnReabrir = document.getElementById('btnReabrir');
+            let btnDesc = document.getElementById('btnDesc');
+            let btnIva = document.getElementById('btnIva');
+            let divCambio = document.getElementById('cajaCambioDiv');
+
+            btnImp.disabled = false;
+
+            if (estado === 'preparando') {
+                btnCamino.style.display = 'flex'; btnCamino.disabled = false;
+                btnCobro.style.display = 'none';
+                btnReabrir.style.display = 'none';
+                
+                btnDesc.disabled = false; btnIva.disabled = false;
+                divCambio.style.opacity = '1'; divCambio.style.pointerEvents = 'auto';
+            } else if (estado === 'en-camino') {
+                btnCamino.style.display = 'none';
+                btnCobro.style.display = 'flex'; btnCobro.disabled = false;
+                btnReabrir.style.display = 'flex'; btnReabrir.disabled = false;
+                
+                btnDesc.disabled = true; btnIva.disabled = true;
+                divCambio.style.opacity = '0.5'; divCambio.style.pointerEvents = 'none';
+            }
+        }
+
+        // ==========================================
+        // CÁLCULOS TIPO SOFT RESTAURANT
+        // ==========================================
+        function calcularTotalFinal() {
+            let base = totalActualLlevar - descuentoAplicado;
+            return ivaAplicado ? (base * 1.16) : base;
+        }
+
+        function calcularCambioRapido() {
+            let pagaCon = parseFloat(document.getElementById('inputPagaCon').value);
+            let total = calcularTotalFinal();
+            let divCambio = document.getElementById('textoCambio');
+            
+            if(pagaCon && pagaCon > total) {
+                divCambio.style.display = 'block';
+                divCambio.innerText = `Llevar cambio: $${(pagaCon - total).toFixed(2)}`;
+            } else {
+                divCambio.style.display = 'none';
+            }
+        }
+
+        function actualizarTotalVista() {
+            let nuevoTotal = calcularTotalFinal();
+            let montoIva = ivaAplicado ? ((totalActualLlevar - descuentoAplicado) * 0.16) : 0;
+            
+            if(descuentoAplicado > 0 || ivaAplicado) {
+                document.getElementById('detalleTotal').innerHTML = `
+                    <div style="font-size:12px; color:#555; font-weight:normal; margin-bottom:2px;">Sub: $${totalActualLlevar.toFixed(2)}</div>
+                    ${descuentoAplicado > 0 ? `<div style="font-size:12px; color:var(--danger); font-weight:normal; margin-bottom:2px;">Desc: -$${descuentoAplicado.toFixed(2)}</div>` : ''}
+                    ${ivaAplicado ? `<div style="font-size:12px; color:var(--info); font-weight:normal; margin-bottom:5px;">IVA: +$${montoIva.toFixed(2)}</div>` : ''}
+                    $${nuevoTotal.toFixed(2)}
+                `;
+            } else {
+                document.getElementById('detalleTotal').innerText = `$${nuevoTotal.toFixed(2)}`;
+            }
+            calcularCambioRapido();
+        }
+
+        function aplicarDescuento() { document.getElementById('inputDescuento').value = ''; document.getElementById('modalDescuento').style.display = 'flex'; }
+        function confirmarDescuento() {
+            let p = document.getElementById('inputDescuento').value;
+            if(p && !isNaN(p) && p > 0 && p <= 100) {
+                descuentoAplicado = totalActualLlevar * (p / 100);
+                actualizarTotalVista(); cerrarModal('modalDescuento');
+            } else {
+                document.getElementById('inputDescuento').style.borderColor = "red";
+                setTimeout(() => document.getElementById('inputDescuento').style.borderColor = "#555", 1000);
+            }
+        }
+        function aplicarIVA() { ivaAplicado = !ivaAplicado; actualizarTotalVista(); }
+        function cerrarModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        // ==========================================
+        // CANCELAR Y REABRIR
+        // ==========================================
+        function cancelarPlatillo(index) {
+            if(confirm("¿Eliminar este platillo? Se anulará el ticket impreso.")) {
+                cuentaActualLlevar.splice(index, 1);
+                localStorage.removeItem('impreso_LLEVAR-' + pedidoSeleccionado);
+
+                if(cuentaActualLlevar.length === 0) {
+                    localStorage.removeItem('cuenta_LLEVAR-' + pedidoSeleccionado);
+                    localStorage.removeItem('info_LLEVAR-' + pedidoSeleccionado);
+                    localStorage.removeItem('estado_LLEVAR-' + pedidoSeleccionado);
+                    alert("Pedido vacío. Cancelado exitosamente.");
+                    location.reload();
+                } else {
+                    localStorage.setItem('cuenta_LLEVAR-' + pedidoSeleccionado, JSON.stringify(cuentaActualLlevar));
+                    verDetalle(pedidoSeleccionado, cuentaActualLlevar, infoClienteActual, 0, 'preparando');
+                    cargarMonitorPedidos();
+                }
+            }
+        }
+
+        function reabrirPedido() {
+            if(confirm("¿Reabrir este pedido? Se le quitará al repartidor.")) {
+                localStorage.setItem('estado_LLEVAR-' + pedidoSeleccionado, 'preparando');
+                localStorage.removeItem('repartidor_LLEVAR-' + pedidoSeleccionado);
+                localStorage.removeItem('impreso_LLEVAR-' + pedidoSeleccionado);
+                cargarMonitorPedidos();
+                verDetalle(pedidoSeleccionado, cuentaActualLlevar, infoClienteActual, totalActualLlevar, 'preparando');
+            }
+        }
+
+        // ==========================================
+        // IMPRESIÓN Y DESPACHO
+        // ==========================================
+        function imprimirTicketDomicilio() {
+            if(!pedidoSeleccionado) return;
+            localStorage.setItem('impreso_LLEVAR-' + pedidoSeleccionado, 'true');
+
+            let fecha = new Date().toLocaleString('es-MX');
+            let htmlItems = "";
+            cuentaActualLlevar.forEach(i => { htmlItems += `<tr><td class="cant-col">${i.cantidad}</td><td class="desc-producto">${i.nombre.substring(0,18)}</td><td class="impte-col">$${i.subtotal.toFixed(2)}</td></tr>`; });
+
+            let nuevoTotal = calcularTotalFinal();
+            let montoIva = ivaAplicado ? ((totalActualLlevar - descuentoAplicado) * 0.16) : 0;
+            
+            let pagaCon = parseFloat(document.getElementById('inputPagaCon').value);
+            let htmlCambio = (pagaCon && pagaCon > nuevoTotal) ? `
+                <div class="dashed-line"></div>
+                <div style="text-align: right; font-size: 11px;">Paga con: $${pagaCon.toFixed(2)}</div>
+                <div class="bold" style="text-align: right; font-size: 14px; color: #000;">CAMBIO: $${(pagaCon - nuevoTotal).toFixed(2)}</div>
+            ` : '';
+
+            let formatoTicket = `
+                <html>
+                <head>
+                    <style>
+                        @media print { @page { margin: 0; size: 58mm auto; } body { margin: 0; } }
+                        body { font-family: 'Courier New', monospace; width: 48mm; font-size: 10px; margin: 0 auto; }
+                        .center { text-align: center; } .bold { font-weight: bold; }
+                        .dashed-line { border-bottom: 1px dashed #000; margin: 6px 0; }
+                        table { width: 100%; border-collapse: collapse; font-size: 10px; }
+                        th { border-bottom: 1px dashed #000; padding-bottom: 2px; text-align: left; }
+                        td { padding: 2px 0; vertical-align: top; }
+                        .desc-producto { width: 55%; word-wrap: break-word; } .cant-col { width: 15%; } .impte-col { width: 30%; text-align: right; }
+                        .datos-cliente { border: 1px solid #000; padding: 4px; margin: 5px 0; font-size: 11px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="center bold" style="font-size: 14px; margin-bottom: 3px;">SOFTWADZ POS</div>
+                    <div class="center" style="font-size: 9px;">ENVÍO A DOMICILIO</div>
+                    <div class="dashed-line"></div>
+                    <div>Fecha: ${fecha}<br>FOLIO: <span class="bold">${pedidoSeleccionado}</span></div>
+                    
+                    <div class="datos-cliente">
+                        <div class="bold center" style="border-bottom:1px solid #000; margin-bottom:3px;">DATOS DE ENTREGA</div>
+                        <b>Tel:</b> ${pedidoSeleccionado}<br><b>Cliente:</b> ${infoClienteActual.nombre || 'Gral'}<br>
+                        <b>Dom:</b> ${infoClienteActual.domicilio || '-'}<br><b>Col:</b> ${infoClienteActual.colonia || '-'}
+                    </div>
+
+                    <table>
+                        <thead><tr><th class="cant-col">CANT</th><th class="desc-producto">DESC</th><th class="impte-col">IMPTE</th></tr></thead>
+                        <tbody>${htmlItems}</tbody>
+                    </table>
+                    
+                    <div class="dashed-line"></div>
+                    ${descuentoAplicado > 0 ? `<div style="text-align:right;">Sub: $${totalActualLlevar.toFixed(2)}<br>Desc: -$${descuentoAplicado.toFixed(2)}</div>` : ''}
+                    ${ivaAplicado ? `<div style="text-align:right;">IVA(16%): +$${montoIva.toFixed(2)}</div>` : ''}
+                    <div class="bold" style="text-align: right; font-size: 14px; margin-top: 5px;">TOTAL: $${nuevoTotal.toFixed(2)}</div>
+                    ${htmlCambio}
+                    <div class="dashed-line"></div>
+                    <div style="margin-top: 20mm; text-align: center; border-top: 1px dashed #000; padding-top: 2px; font-size: 8px;">✂️ Corte</div>
+                </body>
+                </html>`;
+
+            let win = window.open('', '_blank', 'width=400,height=600');
+            win.document.write(formatoTicket); win.document.close(); win.focus();
+            setTimeout(() => { win.print(); }, 500);
+        }
+
+        function marcarEnCamino() {
+            if(localStorage.getItem('impreso_LLEVAR-' + pedidoSeleccionado) !== 'true') {
+                let btn = document.getElementById('btnImprimirLlevar');
+                btn.style.boxShadow = "0 0 15px red"; setTimeout(() => btn.style.boxShadow = "none", 1500);
+                return alert("⚠️ ERROR: Debes imprimir el ticket antes de despachar.");
+            }
+
+            let sel = document.getElementById('selectRepartidor');
+            if(!sel.value) {
+                sel.style.borderColor = "red"; setTimeout(() => sel.style.borderColor = "#30363d", 1000);
+                return alert("Seleccione un repartidor en el panel inferior primero.");
+            }
+            
+            localStorage.setItem('estado_LLEVAR-' + pedidoSeleccionado, 'en-camino');
+            localStorage.setItem('repartidor_LLEVAR-' + pedidoSeleccionado, sel.value);
+            
+            cargarMonitorPedidos();
+            verDetalle(pedidoSeleccionado, cuentaActualLlevar, infoClienteActual, totalActualLlevar, 'en-camino');
+        }
+
+        // ==========================================
+        // COBRO Y CORTE 
+        // ==========================================
+        function liquidarRepartidor() {
+            if(confirm(`¿Liquidar cobro individual del pedido ${pedidoSeleccionado}?`)) {
+                localStorage.removeItem('cuenta_LLEVAR-' + pedidoSeleccionado);
+                localStorage.removeItem('info_LLEVAR-' + pedidoSeleccionado);
+                localStorage.removeItem('estado_LLEVAR-' + pedidoSeleccionado);
+                localStorage.removeItem('repartidor_LLEVAR-' + pedidoSeleccionado);
+                localStorage.removeItem('impreso_LLEVAR-' + pedidoSeleccionado);
+                location.reload();
+            }
+        }
+
+        function liquidarTodoTurno() {
+            let sel = document.getElementById('selectRepartidor');
+            if(!sel.value) {
+                sel.style.borderColor = "red"; setTimeout(() => sel.style.borderColor = "#30363d", 1000);
+                return;
+            }
+
+            let totalCorte = 0, pedidosLiquidados = 0;
+            llavesParaBorrarCorte = []; 
+
+            for (let i = 0; i < localStorage.length; i++) {
+                let key = localStorage.key(i);
+                if (key.startsWith('estado_LLEVAR-')) {
+                    let idPedido = key.replace('estado_LLEVAR-', '');
+                    if (localStorage.getItem(key) === 'en-camino' && localStorage.getItem('repartidor_LLEVAR-' + idPedido) === sel.value) {
+                        let cuenta = JSON.parse(localStorage.getItem('cuenta_LLEVAR-' + idPedido)) || [];
+                        cuenta.forEach(p => totalCorte += p.subtotal); 
+                        pedidosLiquidados++;
+                        llavesParaBorrarCorte.push('cuenta_LLEVAR-' + idPedido, 'info_LLEVAR-' + idPedido, 'estado_LLEVAR-' + idPedido, 'repartidor_LLEVAR-' + idPedido, 'impreso_LLEVAR-' + idPedido);
+                    }
+                }
+            }
+
+            if(pedidosLiquidados === 0) return alert("Este repartidor no tiene viajes activos pendientes de cobro.");
+
+            document.getElementById('textoCorte').innerHTML = `Se liquidarán <b>${pedidosLiquidados} pedidos</b> de <b>${sel.options[sel.selectedIndex].text}</b>.`;
+            document.getElementById('totalCortePantalla').innerText = `$${totalCorte.toFixed(2)}`;
+            document.getElementById('modalCorte').style.display = 'flex';
+        }
+
+        function ejecutarCorteDefinitivo() {
+            llavesParaBorrarCorte.forEach(k => localStorage.removeItem(k));
+            cerrarModal('modalCorte'); location.reload(); 
+        }
+    </script>
+</body>
+</html>
