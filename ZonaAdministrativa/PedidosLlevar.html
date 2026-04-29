@@ -226,24 +226,42 @@
             cargarMonitorPedidos();
         });
 
-        // 1. CAPTURA
-        function abrirMenuParaLlevar() {
+        // 1. CAPTURA (NUEVA CONEXIÓN A PHP)
+        async function abrirMenuParaLlevar() {
             let tel = document.getElementById('cliTelefono').value.trim();
-            if(tel === "") return alert("El número de teléfono es obligatorio.");
+            let nom = document.getElementById('cliNombre').value.trim();
+            let dom = document.getElementById('cliDomicilio').value.trim();
+            let col = document.getElementById('cliColonia').value.trim();
 
-            let datosCliente = { 
-                telefono: tel, 
-                nombre: document.getElementById('cliNombre').value.trim(), 
-                domicilio: document.getElementById('cliDomicilio').value.trim(), 
-                colonia: document.getElementById('cliColonia').value.trim(), 
-                tipo: 'delivery' 
-            };
-            localStorage.setItem('clienteDeliveryActivo', JSON.stringify(datosCliente));
-            localStorage.setItem('mesaActiva', JSON.stringify({ nombre: `LLEVAR-${tel}`, estado: 'libre', tipo: 'delivery' }));
-            window.location.href = '../Comedor/PuntoVenta.html';
+            if(tel === "") return alert("El teléfono es obligatorio.");
+
+            let formData = new FormData();
+            formData.append('telefono', tel);
+            formData.append('nombre', nom);
+            formData.append('domicilio', dom);
+            formData.append('colonia', col);
+
+            try {
+                let resp = await fetch('obtener_folio.php', { method: 'POST', body: formData });
+                let data = await resp.json();
+
+                if(data.status === 'success') {
+                    let datosCliente = { folio: data.folio, orden: data.orden, telefono: tel, nombre: nom, domicilio: dom, colonia: col, tipo: 'delivery' };
+                    localStorage.setItem('clienteDeliveryActivo', JSON.stringify(datosCliente));
+                    
+                    // Se usa FOLIO en lugar de LLEVAR
+                    localStorage.setItem('mesaActiva', JSON.stringify({ nombre: `FOLIO-${data.folio}`, num_orden: data.orden, estado: 'libre', tipo: 'delivery' }));
+                    window.location.href = '../Comedor/PuntoVenta.html';
+                } else {
+                    alert(data.message);
+                }
+            } catch (e) {
+                console.error("Error al generar folio:", e);
+                alert("Error de conexión. ¿Ya iniciaste el servidor PHP y creaste la tabla TURNO_GENERAL?");
+            }
         }
 
-        // 2. MONITOR Y CARGA
+        // 2. MONITOR (AHORA BUSCA "FOLIO-")
         function cargarMonitorPedidos() {
             const panel = document.getElementById('listaPedidosLlevar');
             panel.innerHTML = '';
@@ -251,20 +269,22 @@
 
             for (let i = 0; i < localStorage.length; i++) {
                 let key = localStorage.key(i);
-                if (key.startsWith('cuenta_LLEVAR-')) {
+                
+                // AQUÍ ESTABA EL ERROR: Ahora busca cuenta_FOLIO-
+                if (key.startsWith('cuenta_FOLIO-')) {
                     hayPedidos = true;
-                    let idPedido = key.replace('cuenta_LLEVAR-', '');
+                    let idPedido = key.replace('cuenta_FOLIO-', '');
                     let cuenta = JSON.parse(localStorage.getItem(key));
-                    let infoCliente = JSON.parse(localStorage.getItem('info_LLEVAR-' + idPedido)) || { nombre: 'Cliente', colonia: 'Local' };
-                    let estado = localStorage.getItem('estado_LLEVAR-' + idPedido) || 'preparando';
-                    let repAsignado = localStorage.getItem('repartidor_LLEVAR-' + idPedido);
+                    
+                    // Todo se busca con FOLIO-
+                    let infoCliente = JSON.parse(localStorage.getItem('info_FOLIO-' + idPedido)) || { nombre: 'Cliente', colonia: 'Local' };
+                    let estado = localStorage.getItem('estado_FOLIO-' + idPedido) || 'preparando';
                     
                     let total = 0; cuenta.forEach(p => total += p.subtotal);
 
                     let card = document.createElement('div');
                     card.className = `tarjeta-pedido ${estado}`;
                     card.id = `card-${idPedido}`;
-                    
                     let badgeHTML = estado === 'preparando' ? '<span class="badge prep">PREPARANDO</span>' : '<span class="badge ruta">EN RUTA</span>';
                     
                     card.innerHTML = `
@@ -272,6 +292,7 @@
                         <h4>Folio: ${idPedido}</h4>
                         <p>👤 ${infoCliente.nombre || 'Gral'}</p>
                         <p>📍 ${infoCliente.colonia || '-'}</p>
+                        <p>📲 ${infoCliente.telefono || '_'}</p>
                         <div class="tarjeta-total">$${total.toFixed(2)}</div>
                     `;
                     card.onclick = () => verDetalle(idPedido, cuenta, infoCliente, total, estado);
@@ -279,7 +300,7 @@
                 }
             }
             if(!hayPedidos) panel.innerHTML = '<div style="text-align:center; color:var(--text-muted); margin-top:20px; font-size:14px;">No hay comandas activas.</div>';
-            calcularCargaRepartidor(); // Actualiza estadísticas si hay cambios
+            calcularCargaRepartidor();
         }
 
         async function cargarRepartidores() {
@@ -306,14 +327,14 @@
             let viajes = 0;
             for (let i = 0; i < localStorage.length; i++) {
                 let key = localStorage.key(i);
-                if (key.startsWith('repartidor_LLEVAR-') && localStorage.getItem(key) === idRep) {
+                if (key.startsWith('repartidor_FOLIO-') && localStorage.getItem(key) === idRep) {
                     viajes++;
                 }
             }
             stats.innerHTML = `Viajes en ruta asignados: <b style="color:var(--warning)">${viajes}</b>`;
         }
 
-        // 3. DETALLE Y LÓGICA DE BOTONES
+        // 3. DETALLE Y LÓGICA
         function verDetalle(idPedido, cuenta, infoCliente, total, estado) {
             pedidoSeleccionado = idPedido;
             cuentaActualLlevar = cuenta;
@@ -324,11 +345,9 @@
             descuentoAplicado = 0; 
             ivaAplicado = false;
 
-            // UI Activa
             document.querySelectorAll('.tarjeta-pedido').forEach(c => c.classList.remove('active'));
             document.getElementById(`card-${idPedido}`).classList.add('active');
 
-            // Llenar Ticket
             document.getElementById('detalleTitulo').innerText = `Folio: ${idPedido}`;
             document.getElementById('detalleInfo').innerHTML = `<b>Cliente:</b> ${infoCliente.nombre || 'Gral'}<br><b>Dir:</b> ${infoCliente.domicilio || '-'}<br><b>Col:</b> ${infoCliente.colonia || '-'}`;
 
@@ -339,12 +358,10 @@
             });
             document.getElementById('detalleItems').innerHTML = htmlItems;
             
-            // Restablecer Finanzas
             document.getElementById('inputPagaCon').value = '';
             document.getElementById('textoCambio').style.display = 'none';
             actualizarTotalVista();
 
-            // CONTROL DE BOTONES EXCLUSIVO DEL PEDIDO
             let btnImp = document.getElementById('btnImprimirLlevar');
             let btnCamino = document.getElementById('btnCamino');
             let btnCobro = document.getElementById('btnCobro');
@@ -357,24 +374,19 @@
 
             if (estado === 'preparando') {
                 btnCamino.style.display = 'flex'; btnCamino.disabled = false;
-                btnCobro.style.display = 'none';
-                btnReabrir.style.display = 'none';
-                
+                btnCobro.style.display = 'none'; btnReabrir.style.display = 'none';
                 btnDesc.disabled = false; btnIva.disabled = false;
                 divCambio.style.opacity = '1'; divCambio.style.pointerEvents = 'auto';
             } else if (estado === 'en-camino') {
                 btnCamino.style.display = 'none';
                 btnCobro.style.display = 'flex'; btnCobro.disabled = false;
                 btnReabrir.style.display = 'flex'; btnReabrir.disabled = false;
-                
                 btnDesc.disabled = true; btnIva.disabled = true;
                 divCambio.style.opacity = '0.5'; divCambio.style.pointerEvents = 'none';
             }
         }
 
-        // ==========================================
-        // CÁLCULOS TIPO SOFT RESTAURANT
-        // ==========================================
+        // CÁLCULOS
         function calcularTotalFinal() {
             let base = totalActualLlevar - descuentoAplicado;
             return ivaAplicado ? (base * 1.16) : base;
@@ -388,9 +400,7 @@
             if(pagaCon && pagaCon > total) {
                 divCambio.style.display = 'block';
                 divCambio.innerText = `Llevar cambio: $${(pagaCon - total).toFixed(2)}`;
-            } else {
-                divCambio.style.display = 'none';
-            }
+            } else { divCambio.style.display = 'none'; }
         }
 
         function actualizarTotalVista() {
@@ -404,9 +414,7 @@
                     ${ivaAplicado ? `<div style="font-size:12px; color:var(--info); font-weight:normal; margin-bottom:5px;">IVA: +$${montoIva.toFixed(2)}</div>` : ''}
                     $${nuevoTotal.toFixed(2)}
                 `;
-            } else {
-                document.getElementById('detalleTotal').innerText = `$${nuevoTotal.toFixed(2)}`;
-            }
+            } else { document.getElementById('detalleTotal').innerText = `$${nuevoTotal.toFixed(2)}`; }
             calcularCambioRapido();
         }
 
@@ -424,22 +432,20 @@
         function aplicarIVA() { ivaAplicado = !ivaAplicado; actualizarTotalVista(); }
         function cerrarModal(id) { document.getElementById(id).style.display = 'none'; }
 
-        // ==========================================
         // CANCELAR Y REABRIR
-        // ==========================================
         function cancelarPlatillo(index) {
             if(confirm("¿Eliminar este platillo? Se anulará el ticket impreso.")) {
                 cuentaActualLlevar.splice(index, 1);
-                localStorage.removeItem('impreso_LLEVAR-' + pedidoSeleccionado);
+                localStorage.removeItem('impreso_FOLIO-' + pedidoSeleccionado);
 
                 if(cuentaActualLlevar.length === 0) {
-                    localStorage.removeItem('cuenta_LLEVAR-' + pedidoSeleccionado);
-                    localStorage.removeItem('info_LLEVAR-' + pedidoSeleccionado);
-                    localStorage.removeItem('estado_LLEVAR-' + pedidoSeleccionado);
+                    localStorage.removeItem('cuenta_FOLIO-' + pedidoSeleccionado);
+                    localStorage.removeItem('info_FOLIO-' + pedidoSeleccionado);
+                    localStorage.removeItem('estado_FOLIO-' + pedidoSeleccionado);
                     alert("Pedido vacío. Cancelado exitosamente.");
                     location.reload();
                 } else {
-                    localStorage.setItem('cuenta_LLEVAR-' + pedidoSeleccionado, JSON.stringify(cuentaActualLlevar));
+                    localStorage.setItem('cuenta_FOLIO-' + pedidoSeleccionado, JSON.stringify(cuentaActualLlevar));
                     verDetalle(pedidoSeleccionado, cuentaActualLlevar, infoClienteActual, 0, 'preparando');
                     cargarMonitorPedidos();
                 }
@@ -448,20 +454,18 @@
 
         function reabrirPedido() {
             if(confirm("¿Reabrir este pedido? Se le quitará al repartidor.")) {
-                localStorage.setItem('estado_LLEVAR-' + pedidoSeleccionado, 'preparando');
-                localStorage.removeItem('repartidor_LLEVAR-' + pedidoSeleccionado);
-                localStorage.removeItem('impreso_LLEVAR-' + pedidoSeleccionado);
+                localStorage.setItem('estado_FOLIO-' + pedidoSeleccionado, 'preparando');
+                localStorage.removeItem('repartidor_FOLIO-' + pedidoSeleccionado);
+                localStorage.removeItem('impreso_FOLIO-' + pedidoSeleccionado);
                 cargarMonitorPedidos();
                 verDetalle(pedidoSeleccionado, cuentaActualLlevar, infoClienteActual, totalActualLlevar, 'preparando');
             }
         }
 
-        // ==========================================
         // IMPRESIÓN Y DESPACHO
-        // ==========================================
         function imprimirTicketDomicilio() {
             if(!pedidoSeleccionado) return;
-            localStorage.setItem('impreso_LLEVAR-' + pedidoSeleccionado, 'true');
+            localStorage.setItem('impreso_FOLIO-' + pedidoSeleccionado, 'true');
 
             let fecha = new Date().toLocaleString('es-MX');
             let htmlItems = "";
@@ -500,7 +504,7 @@
                     
                     <div class="datos-cliente">
                         <div class="bold center" style="border-bottom:1px solid #000; margin-bottom:3px;">DATOS DE ENTREGA</div>
-                        <b>Tel:</b> ${pedidoSeleccionado}<br><b>Cliente:</b> ${infoClienteActual.nombre || 'Gral'}<br>
+                        <b>Tel:</b> ${infoClienteActual.telefono}<br><b>Cliente:</b> ${infoClienteActual.nombre || 'Gral'}<br>
                         <b>Dom:</b> ${infoClienteActual.domicilio || '-'}<br><b>Col:</b> ${infoClienteActual.colonia || '-'}
                     </div>
 
@@ -516,7 +520,7 @@
                     ${htmlCambio}
                     <div class="dashed-line"></div>
                     <div style="margin-top: 20mm; text-align: center; border-top: 1px dashed #000; padding-top: 2px; font-size: 8px;">✂️ Corte</div>
-                </body>
+                    </body>
                 </html>`;
 
             let win = window.open('', '_blank', 'width=400,height=600');
@@ -525,7 +529,7 @@
         }
 
         function marcarEnCamino() {
-            if(localStorage.getItem('impreso_LLEVAR-' + pedidoSeleccionado) !== 'true') {
+            if(localStorage.getItem('impreso_FOLIO-' + pedidoSeleccionado) !== 'true') {
                 let btn = document.getElementById('btnImprimirLlevar');
                 btn.style.boxShadow = "0 0 15px red"; setTimeout(() => btn.style.boxShadow = "none", 1500);
                 return alert("⚠️ ERROR: Debes imprimir el ticket antes de despachar.");
@@ -537,23 +541,21 @@
                 return alert("Seleccione un repartidor en el panel inferior primero.");
             }
             
-            localStorage.setItem('estado_LLEVAR-' + pedidoSeleccionado, 'en-camino');
-            localStorage.setItem('repartidor_LLEVAR-' + pedidoSeleccionado, sel.value);
+            localStorage.setItem('estado_FOLIO-' + pedidoSeleccionado, 'en-camino');
+            localStorage.setItem('repartidor_FOLIO-' + pedidoSeleccionado, sel.value);
             
             cargarMonitorPedidos();
             verDetalle(pedidoSeleccionado, cuentaActualLlevar, infoClienteActual, totalActualLlevar, 'en-camino');
         }
 
-        // ==========================================
         // COBRO Y CORTE 
-        // ==========================================
         function liquidarRepartidor() {
             if(confirm(`¿Liquidar cobro individual del pedido ${pedidoSeleccionado}?`)) {
-                localStorage.removeItem('cuenta_LLEVAR-' + pedidoSeleccionado);
-                localStorage.removeItem('info_LLEVAR-' + pedidoSeleccionado);
-                localStorage.removeItem('estado_LLEVAR-' + pedidoSeleccionado);
-                localStorage.removeItem('repartidor_LLEVAR-' + pedidoSeleccionado);
-                localStorage.removeItem('impreso_LLEVAR-' + pedidoSeleccionado);
+                localStorage.removeItem('cuenta_FOLIO-' + pedidoSeleccionado);
+                localStorage.removeItem('info_FOLIO-' + pedidoSeleccionado);
+                localStorage.removeItem('estado_FOLIO-' + pedidoSeleccionado);
+                localStorage.removeItem('repartidor_FOLIO-' + pedidoSeleccionado);
+                localStorage.removeItem('impreso_FOLIO-' + pedidoSeleccionado);
                 location.reload();
             }
         }
@@ -570,13 +572,13 @@
 
             for (let i = 0; i < localStorage.length; i++) {
                 let key = localStorage.key(i);
-                if (key.startsWith('estado_LLEVAR-')) {
-                    let idPedido = key.replace('estado_LLEVAR-', '');
-                    if (localStorage.getItem(key) === 'en-camino' && localStorage.getItem('repartidor_LLEVAR-' + idPedido) === sel.value) {
-                        let cuenta = JSON.parse(localStorage.getItem('cuenta_LLEVAR-' + idPedido)) || [];
+                if (key.startsWith('estado_FOLIO-')) {
+                    let idPedido = key.replace('estado_FOLIO-', '');
+                    if (localStorage.getItem(key) === 'en-camino' && localStorage.getItem('repartidor_FOLIO-' + idPedido) === sel.value) {
+                        let cuenta = JSON.parse(localStorage.getItem('cuenta_FOLIO-' + idPedido)) || [];
                         cuenta.forEach(p => totalCorte += p.subtotal); 
                         pedidosLiquidados++;
-                        llavesParaBorrarCorte.push('cuenta_LLEVAR-' + idPedido, 'info_LLEVAR-' + idPedido, 'estado_LLEVAR-' + idPedido, 'repartidor_LLEVAR-' + idPedido, 'impreso_LLEVAR-' + idPedido);
+                        llavesParaBorrarCorte.push('cuenta_FOLIO-' + idPedido, 'info_FOLIO-' + idPedido, 'estado_FOLIO-' + idPedido, 'repartidor_FOLIO-' + idPedido, 'impreso_FOLIO-' + idPedido);
                     }
                 }
             }

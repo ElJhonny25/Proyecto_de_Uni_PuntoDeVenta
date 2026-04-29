@@ -62,6 +62,18 @@
         .color-control { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-weight: bold; }
         .close-settings-btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; background: #333; color: white; transition: 0.2s; }
         .close-settings-btn:hover { filter: brightness(1.2); }
+        /* ESTILOS DEL CONTROL DE TURNO */
+        .widget-turno { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        .turno-info { display: flex; align-items: center; gap: 15px; }
+        .indicador-estado { width: 15px; height: 15px; border-radius: 50%; background: #dc3545; box-shadow: 0 0 10px #dc3545; }
+        .indicador-estado.abierto { background: #28a745; box-shadow: 0 0 10px #28a745; }
+        .turno-textos h3 { margin: 0; font-size: 18px; color: white; }
+        .turno-textos p { margin: 0; font-size: 12px; color: #8b949e; }
+        .btn-turno { padding: 10px 20px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; color: white; text-transform: uppercase; }
+        .btn-abrir { background: #ff7f2a; }
+        .btn-abrir:hover { background: #e66a1f; }
+        .btn-cerrar { background: #dc3545; }
+        .btn-cerrar:hover { background: #c82333; }
     </style>
 </head>
 <body>
@@ -70,6 +82,19 @@
         <div class="titulo-admin">PANEL <span>ADMINISTRADOR</span></div>
         <button class="btn-salir" onclick="window.location.href='../Pagina_Principal/Pagina_Principal.html'">Cerrar Sesión</button>
     </div>
+    <div class="widget-turno">
+            <div class="turno-info">
+                <div class="indicador-estado" id="ledTurno"></div>
+                <div class="turno-textos">
+                    <h3 id="tituloTurno">TURNO CERRADO</h3>
+                    <p id="descTurno">No se pueden realizar ventas. Abre el turno para iniciar.</p>
+                </div>
+            </div>
+            <div class="turno-acciones">
+                <button class="btn-turno btn-abrir" id="btnAbrirTurno" onclick="abrirTurnoGeneral()">Abrir Turno</button>
+                <button class="btn-turno btn-cerrar" id="btnCerrarTurno" style="display:none;" onclick="cerrarTurnoGeneral()">Cerrar Turno</button>
+            </div>
+        </div>
 
     <div class="dashboard-container">
        <a href="Caja.html" class="module-card">
@@ -114,6 +139,7 @@
             <div class="module-desc">Personalizar logo, colores y fondo del sistema</div>
         </div>
     </div>
+    
 
     <div class="settings-modal" id="settingsModal">
         <div class="settings-content">
@@ -193,6 +219,95 @@
         function resetColors() {
             localStorage.removeItem('--color-acento'); localStorage.removeItem('logoRestaurante'); localStorage.removeItem('bgRestaurante');
             location.reload(); 
+        }
+        let turnoActualID = null;
+
+        document.addEventListener("DOMContentLoaded", () => {
+            verificarEstadoTurno();
+        });
+
+        async function verificarEstadoTurno() {
+            try {
+                let formData = new FormData();
+                formData.append('accion', 'estado');
+                
+                let resp = await fetch('gestion_turno.php', { method: 'POST', body: formData });
+                let data = await resp.json();
+
+                let led = document.getElementById('ledTurno');
+                let titulo = document.getElementById('tituloTurno');
+                let desc = document.getElementById('descTurno');
+                let btnAbrir = document.getElementById('btnAbrirTurno');
+                let btnCerrar = document.getElementById('btnCerrarTurno');
+
+                if (data.status === 'abierto') {
+                    turnoActualID = data.data.ID_TURNO;
+                    led.classList.add('abierto');
+                    titulo.innerText = `TURNO #${turnoActualID} ABIERTO`;
+                    titulo.style.color = "#28a745";
+                    desc.innerText = `Fondo inicial: $${parseFloat(data.data.FONDO_CAJA).toFixed(2)} | Inicio: ${data.data.FECHA_APERTURA}`;
+                    btnAbrir.style.display = 'none';
+                    btnCerrar.style.display = 'block';
+                } else {
+                    turnoActualID = null;
+                    led.classList.remove('abierto');
+                    titulo.innerText = "TURNO CERRADO";
+                    titulo.style.color = "#dc3545";
+                    desc.innerText = "No se pueden realizar ventas. Abre el turno para iniciar.";
+                    btnAbrir.style.display = 'block';
+                    btnCerrar.style.display = 'none';
+                }
+            } catch (error) {
+                console.error("Error consultando el turno:", error);
+            }
+        }
+
+        async function abrirTurnoGeneral() {
+            let fondoStr = prompt("¿Con cuánto efectivo en caja inicia el turno? (Fondo de caja)");
+            if (fondoStr === null) return; // Canceló
+            
+            let fondo = parseFloat(fondoStr);
+            if (isNaN(fondo) || fondo < 0) return alert("Por favor ingresa una cantidad válida.");
+
+            let formData = new FormData();
+            formData.append('accion', 'abrir');
+            formData.append('fondo', fondo);
+
+            try {
+                let resp = await fetch('gestion_turno.php', { method: 'POST', body: formData });
+                let data = await resp.json();
+                if (data.status === 'success') {
+                    alert("✅ " + data.message);
+                    verificarEstadoTurno();
+                } else {
+                    alert("❌ Error: " + data.message);
+                }
+            } catch (error) {
+                console.error("Error abriendo turno:", error);
+            }
+        }
+
+        async function cerrarTurnoGeneral() {
+            if (!turnoActualID) return;
+            
+            if (confirm("⚠️ ¿Estás seguro de CERRAR el turno general?\nYa no se podrán hacer ventas hasta abrir uno nuevo.")) {
+                let formData = new FormData();
+                formData.append('accion', 'cerrar');
+                formData.append('id_turno', turnoActualID);
+
+                try {
+                    let resp = await fetch('gestion_turno.php', { method: 'POST', body: formData });
+                    let data = await resp.json();
+                    if (data.status === 'success') {
+                        alert("🔒 " + data.message);
+                        verificarEstadoTurno();
+                    } else {
+                        alert("❌ Error al cerrar: " + data.message);
+                    }
+                } catch (error) {
+                    console.error("Error cerrando turno:", error);
+                }
+            }
         }
     </script>
 </body>
