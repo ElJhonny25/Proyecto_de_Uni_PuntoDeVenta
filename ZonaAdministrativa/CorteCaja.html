@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Corte de Caja - SOFTWADZ</title>
+    <style>
+        body { font-family: sans-serif; background: #1a1e24; color: white; margin: 0; padding: 20px; }
+        .resumen-card { background: #2c3e50; padding: 20px; border-radius: 10px; width: 400px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        h2 { text-align: center; color: #ff7f2a; border-bottom: 1px solid #555; padding-bottom: 10px; }
+        .dato-row { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 18px; }
+        .gran-total { font-size: 24px; font-weight: bold; color: #28a745; margin-top: 20px; border-top: 2px dashed #555; padding-top: 15px; }
+        .btn-cerrar { width: 100%; padding: 15px; background: #dc3545; color: white; border: none; border-radius: 5px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 20px; }
+        .btn-cerrar:hover { background: #c82333; }
+    </style>
+</head>
+<body>
+
+    <div class="resumen-card">
+        <h2>Resumen del Turno</h2>
+        
+        <div class="dato-row">
+            <span>Fecha de Apertura:</span>
+            <strong id="lblApertura">--</strong>
+        </div>
+        
+        <div class="dato-row">
+            <span>Fondo Inicial:</span>
+            <strong id="lblFondo">$0.00</strong>
+        </div>
+        
+        <div class="dato-row">
+            <span>Ventas Totales:</span>
+            <strong id="lblVentas">$0.00</strong>
+        </div>
+        
+        <div class="dato-row">
+            <span>Tickets Pagados:</span>
+            <strong id="lblTickets">0</strong>
+        </div>
+
+        <div class="dato-row gran-total">
+            <span>Total en Caja Físico:</span>
+            <span id="lblTotalCaja">$0.00</span>
+        </div>
+
+        <button class="btn-cerrar" onclick="confirmarCorte()">Realizar Corte de Caja</button>
+    </div>
+
+    <script>
+        let turnoId = null;
+        let totalCerrar = 0;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                let req = await fetch('obtener_resumen_corte.php');
+                let res = await req.json();
+
+                if (res.status === 'success') {
+                    turnoId = res.turno;
+                    totalCerrar = res.totalEnCaja;
+
+                    document.getElementById('lblApertura').innerText = new Date(res.fechaApertura).toLocaleString();
+                    document.getElementById('lblFondo').innerText = "$" + parseFloat(res.fondoInicial).toFixed(2);
+                    document.getElementById('lblVentas').innerText = "$" + parseFloat(res.totalVentas).toFixed(2);
+                    document.getElementById('lblTickets').innerText = res.numTickets;
+                    document.getElementById('lblTotalCaja').innerText = "$" + parseFloat(res.totalEnCaja).toFixed(2);
+                } else {
+                    alert(res.message);
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        });
+
+        async function confirmarCorte() {
+            if (!turnoId) return alert("No hay información de turno válida.");
+
+            if (confirm("¿Está seguro de cerrar el turno actual con un total en caja de $" + totalCerrar.toFixed(2) + "?\n\nNo podrá deshacer esta acción ni cobrar más mesas hasta abrir un nuevo turno.")) {
+                
+                try {
+                    // Llamamos a nuestro nuevo archivo PHP
+                    let req = await fetch('cerrar_turno.php', { method: 'POST' });
+                    let res = await req.json();
+
+                    if(res.status === 'success') {
+                        alert("✅ " + res.message);
+                        
+                        // Redirigimos al Panel Administrador (Ajusta el nombre de tu archivo si es distinto)
+                        window.location.href = "AdminDashboard.html"; 
+                    } else {
+                        alert("Error de Base de Datos: " + res.message);
+                    }
+                } catch(e) {
+                    console.error(e);
+                    alert("Error de red al intentar comunicarse con el servidor.");
+                }
+            }
+        }
+    </script>
+</body>
+</html>
