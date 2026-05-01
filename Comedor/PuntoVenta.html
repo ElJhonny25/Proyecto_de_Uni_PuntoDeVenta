@@ -156,9 +156,13 @@
         </div>
     </div>
 
-    <script>
+   <script>
         let menuCompleto = [];
-        let cuentaActual = [];
+        
+        // NUEVA ARQUITECTURA: Dividimos el historial de lo nuevo
+        let cuentaHistorica = []; // Lo que ya se mandó a cocina en el pasado (Invisible aquí)
+        let cuentaNuevos = [];    // Lo que el mesero está agregando AHORA MISMO (Visible)
+        
         let idCategoriaActiva = null;
         let cantidadGlobal = 1;
         let nombreMesaActual = "";
@@ -174,18 +178,22 @@
             if(mesero) document.getElementById('nombreMesero').innerText = "Mesero: " + mesero.nombre;
 
             let mesa = JSON.parse(localStorage.getItem('mesaActiva'));
-            if(mesa) {
+            if(mesa && mesa.nombre) {
                 nombreMesaActual = mesa.nombre;
                 document.getElementById('tituloMesa').innerText = "MESA: " + mesa.nombre;
                 document.getElementById('ticketMesa').innerText = "Mesa " + mesa.nombre;
 
-                // NUEVO: Cargar si la mesa ya tenía productos agregados antes
-                let cuentaGuardada = localStorage.getItem('cuenta_' + mesa.nombre);
+                // 1. CARGAMOS LA CUENTA VIEJA (PERO NO LA DIBUJAMOS EN PANTALLA)
+                let cuentaGuardada = localStorage.getItem('cuenta_' + nombreMesaActual);
                 if (cuentaGuardada) {
-                    cuentaActual = JSON.parse(cuentaGuardada);
-                    actualizarTicketUI();
+                    cuentaHistorica = JSON.parse(cuentaGuardada);
+                    // Nos aseguramos de que todo lo histórico tenga la bandera de impreso
+                    cuentaHistorica.forEach(item => item.impreso = true);
                 }
-
+                
+                // Actualizamos la UI, que como cuentaNuevos está vacío, empezará en limpio.
+                actualizarTicketUI();
+                
             } else {
                 alert("Error: No se seleccionó ninguna mesa.");
                 window.location.href = "Comedor.html";
@@ -254,21 +262,28 @@
                 let btn = document.createElement('div');
                 btn.className = 'btn-producto';
                 btn.innerHTML = `<span style="font-size: 13px; font-weight:bold;">${prod.NOMBRE}</span><div class="precio-badge">$ ${parseFloat(prod.PRECIO).toFixed(2)}</div>`;
+                // Al hacer clic, se agrega a los NUEVOS
                 btn.onclick = () => agregarAlTicket(prod, cantidadGlobal);
                 panel.appendChild(btn);
             });
         }
 
+        // 2. AGREGAR AL TICKET (SOLO MODIFICA cuentaNuevos)
         function agregarAlTicket(producto, cantidadAgregar) {
-            let itemExistente = cuentaActual.find(item => item.id == producto.ID_PRODUCTO);
+            let itemExistente = cuentaNuevos.find(item => item.id == producto.ID_PRODUCTO);
+            
             if (itemExistente) {
                 itemExistente.cantidad += cantidadAgregar;
                 itemExistente.subtotal = itemExistente.cantidad * parseFloat(producto.PRECIO);
             } else {
-                cuentaActual.push({
-                    id: producto.ID_PRODUCTO, nombre: producto.NOMBRE,
-                    precioUnitario: parseFloat(producto.PRECIO), cantidad: cantidadAgregar,
-                    subtotal: cantidadAgregar * parseFloat(producto.PRECIO)
+                cuentaNuevos.push({
+                    id: producto.ID_PRODUCTO, 
+                    nombre: producto.NOMBRE,
+                    precioUnitario: parseFloat(producto.PRECIO), 
+                    cantidad: cantidadAgregar,
+                    subtotal: cantidadAgregar * parseFloat(producto.PRECIO),
+                    categoria: producto.CATEGORIA || 'COCINA GENERAL',
+                    impreso: false 
                 });
             }
             cantidadGlobal = 1; document.getElementById('multiplicadorValor').innerText = cantidadGlobal;
@@ -276,30 +291,32 @@
         }
 
         function ajustarCantidad(idProducto, cambio) {
-            let itemIndex = cuentaActual.findIndex(item => item.id == idProducto);
+            let itemIndex = cuentaNuevos.findIndex(item => item.id == idProducto);
             if (itemIndex > -1) {
-                cuentaActual[itemIndex].cantidad += cambio;
-                if (cuentaActual[itemIndex].cantidad <= 0) cuentaActual.splice(itemIndex, 1);
-                else cuentaActual[itemIndex].subtotal = cuentaActual[itemIndex].cantidad * cuentaActual[itemIndex].precioUnitario;
+                cuentaNuevos[itemIndex].cantidad += cambio;
+                if (cuentaNuevos[itemIndex].cantidad <= 0) cuentaNuevos.splice(itemIndex, 1);
+                else cuentaNuevos[itemIndex].subtotal = cuentaNuevos[itemIndex].cantidad * cuentaNuevos[itemIndex].precioUnitario;
                 actualizarTicketUI();
             }
         }
 
         function quitarDelTicket(idProducto) {
-            cuentaActual = cuentaActual.filter(item => item.id != idProducto);
+            cuentaNuevos = cuentaNuevos.filter(item => item.id != idProducto);
             actualizarTicketUI();
         }
 
+        // 3. ACTUALIZAR PANTALLA (SOLO DIBUJA cuentaNuevos)
         function actualizarTicketUI() {
             const panel = document.getElementById('ticketItems');
-            panel.innerHTML = ''; let totalVenta = 0;
+            panel.innerHTML = ''; let totalNuevos = 0;
 
-            if(cuentaActual.length === 0) {
-                panel.innerHTML = '<div style="text-align:center; color:#aaa; margin-top:20px;">Ticket vacío</div>';
+            if(cuentaNuevos.length === 0) {
+                panel.innerHTML = '<div style="text-align:center; color:#aaa; margin-top:20px;">No hay comandas nuevas</div>';
             } else {
-                cuentaActual.forEach(item => {
-                    totalVenta += item.subtotal;
-                    let div = document.createElement('div'); div.className = 'item-comanda';
+                cuentaNuevos.forEach(item => {
+                    totalNuevos += item.subtotal;
+                    let div = document.createElement('div'); 
+                    div.className = 'item-comanda';
                     div.innerHTML = `
                         <div class="item-info"><span class="item-nombre">${item.nombre}</span><span class="item-precio-unitario">P.U: $${item.precioUnitario.toFixed(2)}</span></div>
                         <div class="item-controles"><button class="btn-mini" onclick="ajustarCantidad('${item.id}', -1)">-</button><span style="font-weight:bold; min-width: 18px; text-align:center;">${item.cantidad}</span><button class="btn-mini" onclick="ajustarCantidad('${item.id}', 1)">+</button></div>
@@ -309,56 +326,98 @@
                     panel.appendChild(div);
                 });
             }
-            document.getElementById('ticketTotal').innerText = `TOTAL: $${totalVenta.toFixed(2)}`;
+            document.getElementById('ticketTotal').innerText = `POR ENVIAR: $${totalNuevos.toFixed(2)}`;
         }
 
-        // --- NUEVO: LÓGICA DE ENVIAR A COCINA ---
-        // En tu archivo PuntoVenta.html, busca la función que guarda el pedido
-function enviarACocina() {
-    // 1. Verificamos que la cuenta no esté vacía
-    if (!cuentaActual || cuentaActual.length === 0) {
-        alert("⚠️ Agrega al menos un producto antes de comandar.");
-        return; 
-    }
+        // 4. LÓGICA DE IMPRESIÓN Y FUSIÓN DE DATOS
+        // Le agregamos la palabra 'async' para poder esperar la respuesta de PHP
+        async function enviarACocina() {
+            if (cuentaNuevos.length === 0) {
+                return alert("No hay productos nuevos para enviar a cocina.");
+            }
 
-    // 2. Extraemos la información
-    let mesaActualStr = localStorage.getItem('mesaActiva');
-    
-    if (!mesaActualStr) {
-        alert("❌ Error: No se detectó ninguna mesa o cliente activo.");
-        return; 
-    }
+            // 1. PREPARAMOS LOS DATOS PARA PHP
+            let formData = new FormData();
+            formData.append('mesa', nombreMesaActual);
+            // Convertimos los productos nuevos a JSON para que PHP los entienda
+            formData.append('productos', JSON.stringify(cuentaNuevos)); 
 
-    // LE CAMBIAMOS EL NOMBRE A 'datosMesa' PARA EVITAR EL CHOQUE
-    let datosMesa = JSON.parse(mesaActualStr);
-    let nombreMesa = datosMesa.nombre;
+            try {
+                // 2. ENVIAMOS LA ORDEN A LA BASE DE DATOS
+                let respuesta = await fetch('guardar_comanda.php', { method: 'POST', body: formData });
+                let data = await respuesta.json();
 
-    // 3. Guardamos los platillos
-    localStorage.setItem('cuenta_' + nombreMesa, JSON.stringify(cuentaActual));
+                if (data.status !== 'success') {
+                    return alert("Error en Base de Datos: " + data.message);
+                }
 
-    // =========================================================
-    // 4. EL SEMÁFORO
-    // =========================================================
-    if (datosMesa.tipo === 'delivery') {
-        
-        let infoCliente = localStorage.getItem('clienteDeliveryActivo');
-        
-        if(infoCliente) {
-            localStorage.setItem('info_' + nombreMesa, infoCliente);
+                // Si PHP dice 'success', entonces sí procedemos a imprimir
+                let categorias = {};
+                cuentaNuevos.forEach(item => {
+                    let cat = item.categoria || 'COCINA GENERAL'; 
+                    if (!categorias[cat]) categorias[cat] = []; 
+                    categorias[cat].push(item);
+                });
+
+                let fecha = new Date().toLocaleString('es-MX');
+                let delay = 0; 
+
+                // Imprimir área por área (con el folio real de SQL Server)
+                for (let cat in categorias) {
+                    setTimeout(() => {
+                        let itemsHTML = "";
+                        categorias[cat].forEach(i => {
+                            itemsHTML += `
+                                <tr>
+                                    <td style="width: 25%; text-align: center; font-size: 18px; white-space: nowrap; vertical-align: top; padding-right: 5px;"><b>[${i.cantidad}]</b></td>
+                                    <td style="width: 75%; font-size: 16px; font-weight: bold; text-align: left; vertical-align: top; line-height: 1.2;">${i.nombre}</td>
+                                </tr>
+                            `;
+                        });
+
+                        let formatoIndividual = `
+                            <html>
+                            <head><style>@media print { @page { margin: 0; size: 58mm auto; } body { margin: 0; } } body { font-family: 'Courier New', monospace; width: 48mm; color: #000; background: #fff; margin: 0 auto; }</style></head>
+                            <body>
+                                <div style="text-align: center; font-weight: bold; font-size: 16px; border-bottom: 2px solid #000; margin-bottom: 5px; padding-bottom: 5px;">*** ${cat.toUpperCase()} ***</div>
+                                <div style="font-size: 12px; margin-bottom: 10px;">
+                                    MESA: <b>${nombreMesaActual}</b><br>
+                                    FOLIO: <b>${data.folio}</b><br>
+                                    FECHA: ${fecha}
+                                </div>
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <thead><tr style="border-bottom: 1px dashed #000;"><th style="text-align: center;">CANT</th><th style="text-align: left; padding-left: 5px;">DESC</th></tr></thead>
+                                    <tbody>${itemsHTML}</tbody>
+                                </table>
+                                <div style="text-align: center; margin-top: 15px; margin-bottom: 5mm; font-size: 10px;">- Fin de orden ${cat} -</div>
+                            </body>
+                            </html>
+                        `;
+
+                        let ventana = window.open('', '_blank', 'width=400,height=600');
+                        ventana.document.write(formatoIndividual);
+                        ventana.document.close();
+                        ventana.focus();
+                        setTimeout(() => { ventana.print(); ventana.close(); }, 500);
+                    }, delay);
+                    delay += 1500; 
+                }
+
+                // 3. LIMPIAMOS MEMORIA LOCAL Y REGRESAMOS
+                cuentaNuevos = []; // Vaciamos lo nuevo
+                
+                // Mantenemos la mesa pintada de rojo en el Comedor
+                localStorage.setItem('estado_' + nombreMesaActual, 'ocupada');
+
+                setTimeout(() => {
+                    window.location.href = "Comedor.html";
+                }, delay + 500);
+
+            } catch (error) {
+                console.error(error);
+                alert("Error de conexión al servidor.");
+            }
         }
-
-        alert("🛵 ¡Pedido a domicilio registrado exitosamente!");
-        window.location.href = '../ZonaAdministrativa/PedidosLlevar.html';
-
-    } else {
-        
-        localStorage.setItem('comandoMesa', JSON.stringify({ nombre: nombreMesa, estado: 'ocupada' }));
-        
-        alert("👨‍🍳 ¡Orden enviada a cocina! La mesa se marcará en rojo.");
-        window.location.href = 'Comedor.html';
-        
-    }
-}
     </script>
 </body>
 </html>

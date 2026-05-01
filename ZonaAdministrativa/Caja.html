@@ -119,12 +119,16 @@
         let totalAPagar = 0;
         let estadoMesaSeleccionada = null;
         let itemsActuales = [];
+        let folioActivo = null; // Guardamos el folio para mandarlo a pagar a SQL
 
         document.addEventListener("DOMContentLoaded", function() {
             cargarMesasPendientes();
+            
+            // EL TRUCO: Ejecuta la función de recargar cada 4000 milisegundos (4 segundos)
+            setInterval(cargarMesasPendientes, 4000); 
         });
 
-        // --- 1. CARGAR MESAS DESDE LA BASE DE DATOS (Ajustado con ruta ../Comedor/) ---
+        // --- 1. CARGAR MESAS DESDE LA BASE DE DATOS ---
         async function cargarMesasPendientes() {
             const panel = document.getElementById('listaMesasPendientes');
             panel.innerHTML = '';
@@ -134,62 +138,82 @@
                 let res = await req.json();
                 
                 if(res.status === 'success') {
-                    // Cargar mesas ocupadas (rojo) y sucias/impresas (amarillo)
+                    // Filtramos mesas ocupadas (rojo) y sucias/impresas (amarillo)
                     const mesasFiltradas = res.mesas.filter(m => m.estado === 'ocupada' || m.estado === 'sucia');
 
                     if (mesasFiltradas.length === 0) {
                         panel.innerHTML = '<div style="text-align: center; color: #aaa; margin-top: 20px;">No hay cuentas activas.</div>';
                         return;
+                        // (Aquí termina el forEach donde dibujas los botones de las mesas)
+                    
+                    // --- AGREGA ESTO ---
+                    // Volver a iluminar la mesa si el cajero la tiene seleccionada
+                    if (mesaSeleccionada) {
+                        let btnActivo = document.getElementById('btn-mesa-' + mesaSeleccionada);
+                        if (btnActivo) btnActivo.classList.add('active');
+                    }
                     }
 
-                    mesasFiltradas.forEach(m => {
-                        let cuentaStr = localStorage.getItem('cuenta_' + m.nombre);
-                        let totalMesa = 0;
-                        if(cuentaStr) {
-                            JSON.parse(cuentaStr).forEach(i => totalMesa += i.subtotal);
-                        }
+                    // Iteramos sobre las mesas ocupadas o sucias
+                    mesasFiltradas.forEach(async (m) => {
+                        // SOLUCIÓN CLAVE: Consultar a cargar_cuenta_mesa.php
+                        try {
+                            let cuentaReq = await fetch(`../Comedor/cargar_cuenta_mesa.php?mesa=${encodeURIComponent(m.nombre)}`);
+                            let cuentaRes = await cuentaReq.json();
 
-                        let btn = document.createElement('button');
-                        btn.className = `btn-mesa-cobro ${m.estado}`;
-                        btn.id = 'btn-mesa-' + m.nombre;
-                        btn.innerHTML = `MESA ${m.nombre} <span class="badge-total">$${totalMesa.toFixed(2)}</span>`;
-                        btn.onclick = () => cargarDetalle(m.nombre, totalMesa, m.estado);
-                        panel.appendChild(btn);
+                            let totalMesa = 0;
+                            if (cuentaRes.status === 'success') {
+                                totalMesa = parseFloat(cuentaRes.total);
+                                
+                            }
+
+                            let btn = document.createElement('button');
+                            btn.className = `btn-mesa-cobro ${m.estado}`;
+                            btn.id = 'btn-mesa-' + m.nombre;
+                            btn.innerHTML = `MESA ${m.nombre} <span class="badge-total">$${totalMesa.toFixed(2)}</span>`;
+                            
+                            // Pasamos el folio a cargarDetalle
+                            btn.onclick = () => cargarDetalle(m.nombre, totalMesa, m.estado, cuentaRes.folio, cuentaRes.items);
+                            panel.appendChild(btn);
+
+                        } catch(e) { console.error("Error al cargar la cuenta de", m.nombre, e); }
                     });
                 }
             } catch(e) { console.error("Error al cargar mesas", e); }
+
         }
 
-        // --- 2. LÓGICA DE RESTRICCIÓN SEGÚN ESTADO ---
-        function cargarDetalle(nombre, total, estado) {
+        // --- 2. MOSTRAR DETALLE EN CAJA ---
+        function cargarDetalle(nombre, total, estado, folio, items) {
             mesaSeleccionada = nombre;
             totalAPagar = total;
             estadoMesaSeleccionada = estado;
-            itemsActuales = [];
+            folioActivo = folio; // Lo necesitamos para el cobro
+            itemsActuales = items || []; // Los items que trae de la base de datos
 
             document.querySelectorAll('.btn-mesa-cobro').forEach(b => b.classList.remove('active'));
             document.getElementById('btn-mesa-' + nombre).classList.add('active');
 
-            document.getElementById('ticketMesaTitulo').innerText = "Cuenta Mesa " + nombre;
+            document.getElementById('ticketMesaTitulo').innerText = `Cuenta ${nombre} (Folio ${folio || 'N/A'})`;
             document.getElementById('ticketTotalCaja').innerText = `TOTAL: $${total.toFixed(2)}`;
 
-            let cuentaStr = localStorage.getItem('cuenta_' + nombre);
-            if(cuentaStr) {
-                itemsActuales = JSON.parse(cuentaStr);
-                let html = "";
+            let html = "";
+            if (itemsActuales.length > 0) {
                 itemsActuales.forEach(i => {
-                    html += `<div class="item-comanda"><span>${i.cantidad}x ${i.nombre}</span><span>$${i.subtotal.toFixed(2)}</span></div>`;
+                    // Usamos las claves de la base de datos: i.CANTIDAD, i.NOMBRE, i.SUBTOTAL
+                    html += `<div class="item-comanda"><span>${i.CANTIDAD}x ${i.NOMBRE}</span><span>$${parseFloat(i.SUBTOTAL).toFixed(2)}</span></div>`;
                 });
-                document.getElementById('ticketItemsCaja').innerHTML = html;
+            } else {
+                html = '<div style="text-align:center; color:#888; margin-top:50px;">Sin detalles (Ocurrió un error al cargar).</div>';
             }
+            document.getElementById('ticketItemsCaja').innerHTML = html;
 
             // APLICAMOS LA RESTRICCIÓN DE NEGOCIO
             const isImpresa = (estado === 'sucia'); 
             
-            document.getElementById('btnImprimir').disabled = false; // Siempre se puede imprimir
+            document.getElementById('btnImprimir').disabled = false; 
             document.getElementById('alertaImpresion').style.display = isImpresa ? 'none' : 'block';
             
-            // Bloqueamos o desbloqueamos teclado y pagos
             document.getElementById('inputRecibido').disabled = !isImpresa;
             document.querySelectorAll('.btn-billete').forEach(b => b.disabled = !isImpresa);
             
@@ -226,19 +250,18 @@
             }
         }
 
-        // --- 3. SIMULADOR DE IMPRESORA TÉRMICA (Ventana Emergente) ---
+        // --- 3. IMPRIMIR PRECUENTA ---
         function imprimirPrecuenta() {
-            if(!mesaSeleccionada) return;
+            if(!mesaSeleccionada || itemsActuales.length === 0) return;
             
-            // Crear el formato del Ticket Térmico (CSS de 80mm)
             let fecha = new Date().toLocaleString('es-MX');
             let htmlItems = "";
             itemsActuales.forEach(i => {
-                htmlItems += `
+                 htmlItems += `
                     <tr>
-                        <td style="text-align:left;">${i.cantidad}</td>
-                        <td style="text-align:left;">${i.nombre.substring(0,18)}</td>
-                        <td style="text-align:right;">$${i.subtotal.toFixed(2)}</td>
+                        <td style="text-align:left;">${i.CANTIDAD}</td>
+                        <td style="text-align:left;">${i.NOMBRE.substring(0,18)}</td>
+                        <td style="text-align:right;">$${parseFloat(i.SUBTOTAL).toFixed(2)}</td>
                     </tr>`;
             });
 
@@ -246,24 +269,19 @@
                 <html>
                 <head>
                    <style>
-                        /* --- CONFIGURACIÓN PARA IMPRESORA TÉRMICA DE 58MM --- */
                         @media print { 
-                            @page { 
-                                margin: 0; 
-                                size: 50mm auto; 
-                            } 
+                            @page { margin: 0; size: 50mm auto; } 
                             body { margin: 0;} 
                         }
-                        
                         body { 
                             font-family: 'Courier New', Courier, monospace; 
-                            width: 48mm; /* Ajustado para centrar mejor */
+                            width: 48mm; 
                             font-size: 12px; 
                             margin: 0 auto; 
                             color: #000; 
                             background: #fff;
-                            padding-top: 0mm; /* Quitamos el espacio de arriba */
-                            padding-bottom: 50mm; /* EMPUJÓN FINAL: Espacio en blanco para que salga completo */
+                            padding-top: 0mm; 
+                            padding-bottom: 50mm; 
                         }
                         .center { text-align: center; }
                         .bold { font-weight: bold; }
@@ -276,15 +294,13 @@
                         .desc-producto { width: 55%; word-wrap: break-word; }
                         .cant-col { width: 15%; }
                         .impte-col { width: 30%; text-align: right; }
-                          
                     </style>
                 </head>
                 <body>
-                    
                     <div class="center bold" style="font-size: 14px; margin-bottom: 3px;">RESTAURANT SOFTWADZ</div>
                     <div class="center" style="font-size: 9px;">Av. Tecnológico, Ixtlán del Río<br>Nayarit, México<br>Tel: 311 555 1234</div>
                     <div class="dashed-line"></div>
-                    <div>Fecha: ${fecha}<br>MESA: <span class="bold">${mesaSeleccionada}</span></div>
+                    <div>Fecha: ${fecha}<br>MESA: <span class="bold">${mesaSeleccionada}</span><br>FOLIO: ${folioActivo}</div>
                     <div class="dashed-line"></div>
                     <table>
                         <thead>
@@ -300,57 +316,76 @@
                     <div class="total-area bold" style="text-align: right;">TOTAL: $${totalAPagar.toFixed(2)}</div>
                     <div class="dashed-line"></div>
                     <div class="center" style="font-size: 9px;">*** NO FISCAL ***<br>¡Gracias por su preferencia!</div>
-
-
-                    <br><br><br><br><br><br><br><br><br><br><br><br>
-
-
-
-
-
-
-                     <div class="center" style="font-size: 9px;">.</div>
                 </body>
                 </html>
             `;
-            // Abrimos la ventana, dibujamos el HTML y llamamos a la API de impresión
+            
             let ventanaImpresion = window.open('', '_blank', 'width=400,height=600');
             ventanaImpresion.document.write(formatoTicket);
             ventanaImpresion.document.close();
             ventanaImpresion.focus();
             
-            // Mandamos a imprimir y luego pasamos la mesa a Amarilla
             setTimeout(() => { 
                 ventanaImpresion.print(); 
                 
-                // Actualizamos estado a Sucia (Amarilla) para desbloquear el cobro
+                // --- CAMBIO DE ESTADO A SUCIA (AMARILLA) ---
+                // Le avisamos al Comedor que la mesa cambió
                 localStorage.setItem('comandoMesa', JSON.stringify({ nombre: mesaSeleccionada, estado: 'sucia' }));
-                cargarMesasPendientes(); // Recargamos para que quite la restricción en pantalla
+                
+                // NOTA: Si quisieras que el estado de 'sucia' persistiera en la base de datos (por si se reinicia la laptop)
+                // aquí deberías hacer un fetch('cambiar_estado_mesa.php', { method: 'POST', body: ... })
+                
+                cargarMesasPendientes(); // Recargamos la interfaz
             }, 500);
         }
 
-        // --- 4. COBRAR (Solo accesible si está en amarillo) ---
+        // --- 4. COBRAR Y LIBERAR EN BD ---
         async function procesarCobroFinal() {
-            if(!mesaSeleccionada || estadoMesaSeleccionada !== 'sucia') return;
+            if(!mesaSeleccionada || estadoMesaSeleccionada !== 'sucia' || !folioActivo) return;
             
-            alert(`✅ COBRO PROCESADO\nMesa liquidada correctamente en el sistema.`);
-            
-            // Limpieza de memoria y liberación visual
-            localStorage.removeItem('cuenta_' + mesaSeleccionada);
-            localStorage.setItem('comandoMesa', JSON.stringify({ nombre: mesaSeleccionada, estado: 'libre' }));
+            try {
+                // AQUÍ HACEMOS LA LLAMADA A PHP PARA COBRAR EN SQL SERVER
+                let formData = new FormData();
+                formData.append('folio', folioActivo);
 
-            // Reset de pantalla
-            mesaSeleccionada = null;
-            document.getElementById('ticketMesaTitulo').innerText = "Seleccione una Mesa";
-            document.getElementById('ticketItemsCaja').innerHTML = '<div style="text-align:center; color:#888; margin-top:50px;">Sin detalles.</div>';
-            document.getElementById('ticketTotalCaja').innerText = "TOTAL: $0.00";
-            document.getElementById('btnImprimir').disabled = true;
-            document.getElementById('alertaImpresion').style.display = 'none';
-            document.getElementById('inputRecibido').disabled = true;
-            document.querySelectorAll('.btn-billete').forEach(b => b.disabled = true);
-            
-            limpiarEfectivo();
-            cargarMesasPendientes();
+                let req = await fetch('cobrar_cuenta.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                let res = await req.json();
+
+                if(res.status === 'success') {
+                    alert(`✅ COBRO PROCESADO\nMesa liquidada correctamente en el sistema.`);
+                    
+                    // --- LIBERAR LA MESA VISUALMENTE ---
+                    // Borramos la cuenta vieja del localStorage (por limpieza)
+                    localStorage.removeItem('cuenta_' + mesaSeleccionada);
+                    // Le decimos al Comedor.html que la ponga en verde al instante
+                    localStorage.setItem('estado_' + mesaSeleccionada, 'libre');
+                    localStorage.setItem('comandoMesa', JSON.stringify({ nombre: mesaSeleccionada, estado: 'libre' }));
+
+                    // Reset de pantalla
+                    mesaSeleccionada = null;
+                    folioActivo = null;
+                    document.getElementById('ticketMesaTitulo').innerText = "Seleccione una Mesa";
+                    document.getElementById('ticketItemsCaja').innerHTML = '<div style="text-align:center; color:#888; margin-top:50px;">Sin detalles.</div>';
+                    document.getElementById('ticketTotalCaja').innerText = "TOTAL: $0.00";
+                    document.getElementById('btnImprimir').disabled = true;
+                    document.getElementById('alertaImpresion').style.display = 'none';
+                    document.getElementById('inputRecibido').disabled = true;
+                    document.querySelectorAll('.btn-billete').forEach(b => b.disabled = true);
+                    
+                    limpiarEfectivo();
+                    cargarMesasPendientes(); // Recarga la lista (la mesa ya no debería aparecer)
+                } else {
+                    alert("Error en la Base de Datos: " + res.message);
+                }
+
+            } catch(e) {
+                console.error(e);
+                alert("Error de conexión al procesar el cobro.");
+            }
         }
     </script>
 </body>

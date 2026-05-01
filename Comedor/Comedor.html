@@ -29,8 +29,14 @@
         .area-layer.active { display: block; }
 
         .mesa { position: absolute; width: 70px; height: 70px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; color: white; font-size: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.6); border: 2px solid rgba(255,255,255,0.8); transition: transform 0.1s; user-select: none; text-shadow: 1px 1px 3px rgba(0,0,0,0.5); }
+        
         .mesa.libre { background-color: #28a745; }
-        .mesa.ocupada { background-color: #dc3545; }
+        .mesa.ocupada {
+            background-color: #dc3545 !important; /* Rojo */
+            color: white !important;
+            border-color: #c82333 !important;
+            box-shadow: 0 0 10px rgba(220, 53, 69, 0.5) !important;
+        }
         .mesa.sucia { background-color: #ffc107; color: #000; text-shadow: none;}
         .mesa.selected { box-shadow: 0 0 0 4px #007bff, 0 8px 20px rgba(0,0,0,0.6); transform: scale(1.15); z-index: 100; }
 
@@ -142,15 +148,30 @@
                 alert("Por favor inicia sesión primero."); window.location.href = "Pagina_Principal.html"; return;
             }
 
+            // Cargamos las mesas desde PHP
             await cargarComedor();
 
-            // Revisar si hay un cambio de color pendiente al cargar la página
+            // Revisar si hay un cambio de color pendiente al cargar la página (señales en vivo)
             ejecutarComandoMesa();
+            setInterval(sincronizarColores, 4000);
         });
+
+        // --- PINTAR MESAS ROJAS ---
+        function pintarMesasOcupadas() {
+            let botonesMesa = document.querySelectorAll('.mesa'); 
+            botonesMesa.forEach(boton => {
+                let nombreMesa = boton.innerText.trim(); 
+                let estado = localStorage.getItem('estado_' + nombreMesa);
+
+                if (estado === 'ocupada') {
+                    boton.classList.remove('libre');
+                    boton.classList.add('ocupada');
+                } 
+            });
+        }
 
         // --- MAGIA EN TIEMPO REAL (SINCRONIZACIÓN CON LA CAJA) ---
         window.addEventListener('storage', function(e) {
-            // Si la Caja manda la señal, el Comedor la atrapa al instante
             if (e.key === 'comandoMesa' && e.newValue) {
                 ejecutarComandoMesa();
             }
@@ -161,11 +182,11 @@
             if (comando) {
                 document.querySelectorAll('.mesa').forEach(m => {
                     if(m.innerText === comando.nombre) {
-                        m.className = `mesa ${comando.estado}`; // Cambia a amarillo (sucia)
+                        m.className = `mesa ${comando.estado}`; 
                     }
                 });
                 localStorage.removeItem('comandoMesa');
-                guardarComedor(); // Guarda el nuevo estado en SQL Server
+                guardarComedor(); 
             }
         }
 
@@ -241,31 +262,119 @@
             window.location.href = "PuntoVenta.html";
         }
 
-        function consultarCuenta(nombre) {
+        async function consultarCuenta(nombre) {
             contextMenu.style.display = 'none';
-            let cuentaGuardada = localStorage.getItem('cuenta_' + nombre);
-            if(cuentaGuardada) {
-                let items = JSON.parse(cuentaGuardada);
-                document.getElementById('modalCuentaTitulo').innerText = "Cuenta Mesa " + nombre;
-                let htmlItems = ""; let total = 0;
-                items.forEach(i => {
-                    htmlItems += `<div class="cuenta-item"><span>${i.cantidad}x ${i.nombre}</span><span>$${i.subtotal.toFixed(2)}</span></div>`;
-                    total += i.subtotal;
-                });
-                document.getElementById('modalCuentaItems').innerHTML = htmlItems;
-                document.getElementById('modalCuentaTotal').innerText = "TOTAL: $" + total.toFixed(2);
-                document.getElementById('modalVistaCuenta').style.display = 'flex';
-            } else {
-                alert("No se encontró registro de cuenta para esta mesa.");
+            
+            try {
+                // Le pedimos la cuenta a la Base de Datos
+                let req = await fetch('cargar_cuenta_mesa.php?mesa=' + encodeURIComponent(nombre));
+                let res = await req.json();
+
+                if (res.status === 'success') {
+                    // Si hay cuenta, la mostramos en el Modal
+                    document.getElementById('modalCuentaTitulo').innerText = "Cuenta " + nombre + " (Folio " + res.folio + ")";
+                    
+                    let htmlItems = ""; 
+                    res.items.forEach(i => {
+                        htmlItems += `<div class="cuenta-item"><span>${i.CANTIDAD}x ${i.NOMBRE}</span><span>$${parseFloat(i.SUBTOTAL).toFixed(2)}</span></div>`;
+                    });
+                    
+                    document.getElementById('modalCuentaItems').innerHTML = htmlItems;
+                    document.getElementById('modalCuentaTotal').innerText = "TOTAL: $" + parseFloat(res.total).toFixed(2);
+                    document.getElementById('modalVistaCuenta').style.display = 'flex';
+                } else {
+                    alert("No hay ninguna cuenta pendiente registrada en la base de datos para esta mesa.");
+                }
+            } catch(e) {
+                console.error(e);
+                alert("Error al intentar conectar con el servidor.");
             }
         }
         function cerrarModalCuenta() { document.getElementById('modalVistaCuenta').style.display = 'none'; }
         
-        function imprimirCuentaComedor() { 
+        async function imprimirCuentaComedor() { 
             contextMenu.style.display = 'none'; 
-            alert("Enviando cuenta a impresora de caja..."); 
-            mesaClickeadaActual.className = "mesa sucia"; 
-            guardarComedor(); 
+            
+            let nombreMesa = mesaClickeadaActual.innerText.trim();
+
+            try {
+                // 1. Vamos a la base de datos por la cuenta real
+                let req = await fetch('cargar_cuenta_mesa.php?mesa=' + encodeURIComponent(nombreMesa));
+                let res = await req.json();
+
+                if (res.status !== 'success') {
+                    return alert("No se encontró cuenta activa para esta mesa.");
+                }
+
+                // 2. Armamos la lista de platillos
+                let fecha = new Date().toLocaleString('es-MX');
+                let htmlItems = "";
+                res.items.forEach(i => {
+                     htmlItems += `
+                        <tr>
+                            <td style="text-align:left;">${i.CANTIDAD}</td>
+                            <td style="text-align:left;">${i.NOMBRE.substring(0,18)}</td>
+                            <td style="text-align:right;">$${parseFloat(i.SUBTOTAL).toFixed(2)}</td>
+                        </tr>`;
+                });
+
+                // 3. Diseñamos el ticket térmico
+                let formatoTicket = `
+                    <html>
+                    <head>
+                       <style>
+                            @media print { @page { margin: 0; size: 50mm auto; } body { margin: 0;} }
+                            body { font-family: 'Courier New', monospace; width: 48mm; font-size: 12px; margin: 0 auto; padding-bottom: 50mm; }
+                            .center { text-align: center; } .bold { font-weight: bold; }
+                            .dashed-line { border-bottom: 1px dashed #000; margin: 6px 0; }
+                            table { width: 100%; border-collapse: collapse; font-size: 10px; }
+                            th { border-bottom: 1px dashed #000; text-align: left; }
+                            td { padding: 2px 0; vertical-align: top;}
+                        </style>
+                    </head>
+                    <body>
+                        <div class="center bold" style="font-size: 14px; margin-bottom: 3px;">RESTAURANT SOFTWADZ</div>
+                        <div class="center" style="font-size: 9px;">PRE-CUENTA (Solicitada en Comedor)</div>
+                        <div class="dashed-line"></div>
+                        <div>Fecha: ${fecha}<br>MESA: <span class="bold">${nombreMesa}</span><br>FOLIO: ${res.folio}</div>
+                        <div class="dashed-line"></div>
+                        <table>
+                            <thead><tr><th style="width:15%;">CANT</th><th style="width:55%;">DESC</th><th style="width:30%; text-align:right;">IMPTE</th></tr></thead>
+                            <tbody>${htmlItems}</tbody>
+                        </table>
+                        <div class="dashed-line"></div>
+                        <div class="bold" style="text-align: right; font-size: 14px;">TOTAL: $${parseFloat(res.total).toFixed(2)}</div>
+                        <div class="dashed-line"></div>
+                        <div class="center" style="font-size: 9px;">*** NO FISCAL ***<br>Favor de pasar a caja a liquidar</div>
+                    </body>
+                    </html>
+                `;
+
+                // 4. Mandamos a la impresora térmica
+                let ventanaImpresion = window.open('', '_blank', 'width=400,height=600');
+                ventanaImpresion.document.write(formatoTicket);
+                ventanaImpresion.document.close();
+                ventanaImpresion.focus();
+
+                setTimeout(() => { 
+                    ventanaImpresion.print(); 
+                    ventanaImpresion.close();
+
+                    // 5. Cambiamos la mesa a estado Sucia (Amarilla) visualmente y en memoria
+                    mesaClickeadaActual.classList.remove('ocupada');
+                    mesaClickeadaActual.classList.add('sucia');
+                    localStorage.setItem('estado_' + nombreMesa, 'sucia');
+                    
+                    // Avisamos a todos (incluida la Caja) que la mesa ya solicitó la cuenta
+                    localStorage.setItem('comandoMesa', JSON.stringify({ nombre: nombreMesa, estado: 'sucia' }));
+                    
+                    guardarComedor(); 
+                }, 500);
+
+            } catch (error) {
+                console.error(error);
+                alert("Error al intentar imprimir la cuenta desde el servidor.");
+            }
         }
         
         function reabrirCuenta() { 
@@ -281,17 +390,13 @@
             } 
         }
 
-       // --- GESTIÓN DE ÁREAS Y MESAS ACTUALIZADA ---
+       // --- GESTIÓN DE ÁREAS Y MESAS ---
         async function guardarComedor() {
             let configuracion = { areas: [], mesas: [] };
             
-            // 1. Guardamos el orden exacto de las pestañas
             document.querySelectorAll('.tab-btn').forEach(btn => configuracion.areas.push(btn.innerText));
-            
-            // 2. Guardamos este orden en el navegador para que no se pierda al recargar
             localStorage.setItem('ordenAreasVisual', JSON.stringify(configuracion.areas));
             
-            // 3. Recopilamos las mesas
             document.querySelectorAll('.area-layer').forEach(layer => {
                 let nombreArea = layer.id.replace('layer-', '');
                 layer.querySelectorAll('.mesa').forEach(mesa => {
@@ -314,7 +419,6 @@
                     let areasBD = res.areas;
                     if(areasBD.length === 0) { areasBD = ["Comedor Principal"]; }
 
-                    // RECUPERAR EL ORDEN VISUAL DEL NAVEGADOR
                     let ordenGuardado = JSON.parse(localStorage.getItem('ordenAreasVisual'));
                     if (ordenGuardado) {
                         areasBD = areasBD.sort((a, b) => {
@@ -326,7 +430,6 @@
                         });
                     }
 
-                    // Dibujar pestañas en el orden correcto
                     areasBD.forEach((nombreArea, index) => {
                         let btn = document.createElement('button'); btn.className = index === 0 ? 'tab-btn active' : 'tab-btn';
                         btn.innerText = nombreArea; 
@@ -338,7 +441,6 @@
                         layer.id = 'layer-' + nombreArea; floorPlan.appendChild(layer);
                     });
 
-                    // Dibujar mesas
                     res.mesas.forEach(m => {
                         let capa = document.getElementById('layer-' + m.area);
                         if (capa) {
@@ -347,34 +449,12 @@
                             mesa.innerText = m.nombre; capa.appendChild(mesa);
                         }
                     });
-                }
-            } catch(e) {}
-        }
-        async function cargarComedor() {
-            try {
-                let req = await fetch('cargar_comedor.php');
-                let res = await req.json();
-                if (res.status === 'success') {
-                    areasContainer.innerHTML = ''; floorPlan.innerHTML = '';
-                    if(res.areas.length === 0) { res.areas = ["Comedor Principal"]; }
-                    res.areas.forEach((nombreArea, index) => {
-                        let btn = document.createElement('button'); btn.className = index === 0 ? 'tab-btn active' : 'tab-btn';
-                        btn.innerText = nombreArea; 
-                        if(isEditing) { btn.setAttribute('draggable', true); btn.style.cursor = 'move'; }
-                        btn.onclick = function() { cambiarArea(nombreArea); }; 
-                        areasContainer.appendChild(btn);
-                        
-                        let layer = document.createElement('div'); layer.className = index === 0 ? 'area-layer active' : 'area-layer';
-                        layer.id = 'layer-' + nombreArea; floorPlan.appendChild(layer);
-                    });
-                    res.mesas.forEach(m => {
-                        let capa = document.getElementById('layer-' + m.area);
-                        if (capa) {
-                            let mesa = document.createElement('div'); mesa.className = `mesa ${m.estado}`;
-                            mesa.style.left = m.left; mesa.style.top = m.top; mesa.style.cursor = isEditing ? 'grab' : 'pointer';
-                            mesa.innerText = m.nombre; capa.appendChild(mesa);
-                        }
-                    });
+
+                    // ---> AQUÍ PINTAMOS LAS MESAS ROJAS DESPUÉS DE QUE SE CREAN <---
+                    pintarMesasOcupadas();
+                    
+                    // Guardamos por si algo cambió de color
+                    guardarComedor();
                 }
             } catch(e) {}
         }
@@ -405,33 +485,29 @@
             
             const nombreArea = activeTab.innerText;
             
-            // Protección de seguridad
             if (nombreArea === 'Comedor Principal') { 
                 alert("🔒 Protección: No puedes eliminar el área predeterminada 'Comedor Principal'."); 
                 return; 
             }
             
-            // Confirmación y borrado
             if (confirm(`⚠️ ¿Estás seguro de que deseas eliminar el área '${nombreArea}' y TODAS las mesas que contiene?`)) {
-                activeTab.remove(); // Borra la pestaña visualmente
+                activeTab.remove(); 
                 
                 const layer = document.getElementById('layer-' + nombreArea);
-                if (layer) layer.remove(); // Borra las mesas de esa pestaña visualmente
+                if (layer) layer.remove(); 
                 
-                cambiarArea('Comedor Principal'); // Regresa a la vista principal
-                guardarComedor(); // Le avisa al PHP que aplique los cambios en SQL Server
+                cambiarArea('Comedor Principal'); 
+                guardarComedor(); 
             }
         }
 
        function eliminarMesaSeleccionada() {
             if (mesaSeleccionada) {
-                // --- NUEVA RESTRICCIÓN DE ESTADO ---
                 if (!mesaSeleccionada.classList.contains('libre')) {
                     alert("⛔ OPERACIÓN DENEGADA\nNo puedes eliminar una mesa que está Ocupada (Roja) o con Cuenta Pendiente (Amarilla).\nDebes cobrarla o liberarla antes de eliminarla del plano.");
-                    return; // Detenemos la ejecución aquí
+                    return; 
                 }
 
-                // Si está libre (verde), procedemos a borrarla
                 if(confirm("¿Eliminar mesa " + mesaSeleccionada.innerText + "?")) {
                     mesaSeleccionada.remove(); 
                     mesaSeleccionada = null; 
@@ -443,7 +519,6 @@
         }
 
         function agregarMesa() { const c = document.querySelector('.area-layer.active'); if(!c) return alert("Selecciona un área."); let n = prompt("Identificador de la mesa:"); if (!n || n.trim() === "") return; n = n.trim(); let e = false; c.querySelectorAll('.mesa').forEach(m => { if(m.innerText === n) e = true; }); if(e) return alert("Mesa ya existe."); const m = document.createElement('div'); m.classList.add('mesa', 'libre'); m.style.left = '200px'; m.style.top = '200px'; m.style.cursor = isEditing ? 'grab' : 'pointer'; m.innerText = n; c.appendChild(m); quitarSeleccionMesas(); m.classList.add('selected'); mesaSeleccionada = m; guardarComedor(); }
-        function eliminarMesaSeleccionada() { if (mesaSeleccionada) { if(confirm("¿Eliminar mesa " + mesaSeleccionada.innerText + "?")) { mesaSeleccionada.remove(); mesaSeleccionada = null; guardarComedor(); } } else { alert("Selecciona una mesa primero."); } }
         function quitarSeleccionMesas() { document.querySelectorAll('.mesa').forEach(m => m.classList.remove('selected')); mesaSeleccionada = null; }
 
         // --- DRAG AND DROP (Arrastrar Pestañas) ---
@@ -492,7 +567,38 @@
 
         document.addEventListener('mousemove', function(e) { if (draggedMesa && isEditing) { const planRect = floorPlan.getBoundingClientRect(); let newX = e.clientX - planRect.left - offsetX; let newY = e.clientY - planRect.top - offsetY; const maxLeft = planRect.width - draggedMesa.offsetWidth; const maxTop = planRect.height - draggedMesa.offsetHeight; newX = Math.max(0, Math.min(newX, maxLeft)); newY = Math.max(0, Math.min(newY, maxTop)); draggedMesa.style.left = newX + 'px'; draggedMesa.style.top = newY + 'px'; } });
         document.addEventListener('mouseup', function() { if (draggedMesa) { draggedMesa.style.cursor = isEditing ? 'move' : 'pointer'; draggedMesa = null; guardarComedor(); } });
-    
+
+
+        async function sincronizarColores() {
+            // Si el Administrador está moviendo las mesas, pausamos la sincronización para no interrumpirlo
+            if (isEditing) return; 
+
+            try {
+                let req = await fetch('cargar_comedor.php');
+                let res = await req.json();
+                
+                if (res.status === 'success') {
+                    // Recorremos las mesas que trajo la base de datos
+                    res.mesas.forEach(mesaBD => {
+                        // Buscamos la bolita HTML de la mesa correspondiente
+                        let mesaHTML = Array.from(document.querySelectorAll('.mesa'))
+                                            .find(el => el.innerText.trim() === mesaBD.nombre);
+                        
+                        // Si la encontramos, simplemente le sobreescribimos el color que diga la Base de Datos
+                        if (mesaHTML) {
+                            mesaHTML.className = `mesa ${mesaBD.estado}`; 
+                            
+                            // Si la mesa estaba seleccionada (con el borde azul), se lo devolvemos
+                            if (mesaSeleccionada && mesaSeleccionada.innerText === mesaBD.nombre) {
+                                mesaHTML.classList.add('selected');
+                            }
+                        }
+                    });
+                }
+            } catch(e) {
+                // Si falla la conexión un segundo, lo ignoramos silenciosamente
+            }
+        }
     </script>
 </body>
 </html>
