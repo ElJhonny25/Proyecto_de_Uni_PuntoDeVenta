@@ -121,8 +121,8 @@
 
     <div class="top-bar">
         <div class="info-mesa" id="tituloMesa">MESA: --</div>
-        <div style="font-weight: 500;" id="nombreMesero">Mesero: --</div>
-        <button class="btn-volver" onclick="volverComedor()">⬅ Volver al Comedor sin Guardar</button>
+        <div style="font-weight: 500;" id="nombreMesero">Atiende: --</div>
+        <button class="btn-volver" onclick="volverAtras()">⬅ Volver sin Guardar</button>
     </div>
 
     <div class="pos-container">
@@ -159,9 +159,8 @@
    <script>
         let menuCompleto = [];
         
-        // NUEVA ARQUITECTURA: Dividimos el historial de lo nuevo
-        let cuentaHistorica = []; // Lo que ya se mandó a cocina en el pasado (Invisible aquí)
-        let cuentaNuevos = [];    // Lo que el mesero está agregando AHORA MISMO (Visible)
+        let cuentaHistorica = []; 
+        let cuentaNuevos = [];    
         
         let idCategoriaActiva = null;
         let cantidadGlobal = 1;
@@ -175,28 +174,35 @@
             if (savedBg) document.body.style.backgroundImage = `url(${savedBg})`;
 
             let mesero = JSON.parse(localStorage.getItem('meseroActivo'));
-            if(mesero) document.getElementById('nombreMesero').innerText = "Mesero: " + mesero.nombre;
+            if(mesero) document.getElementById('nombreMesero').innerText = "Atiende: " + mesero.nombre;
 
             let mesa = JSON.parse(localStorage.getItem('mesaActiva'));
+            
             if(mesa && mesa.nombre) {
                 nombreMesaActual = mesa.nombre;
-                document.getElementById('tituloMesa').innerText = "MESA: " + mesa.nombre;
-                document.getElementById('ticketMesa').innerText = "Mesa " + mesa.nombre;
+                
+                // MÁGIA PARA DETECTAR SI ES REPARTIDOR O MESERO
+                let esDomicilio = nombreMesaActual.toUpperCase().includes('DOMICILIO') || nombreMesaActual.toUpperCase().includes('LLEVAR') || nombreMesaActual.toUpperCase().includes('PEDIDO');
 
-                // 1. CARGAMOS LA CUENTA VIEJA (PERO NO LA DIBUJAMOS EN PANTALLA)
+                if(esDomicilio) {
+                    document.getElementById('tituloMesa').innerText = "ORDEN: " + nombreMesaActual;
+                    document.getElementById('ticketMesa').innerText = nombreMesaActual;
+                } else {
+                    document.getElementById('tituloMesa').innerText = "MESA: " + nombreMesaActual;
+                    document.getElementById('ticketMesa').innerText = "Mesa " + nombreMesaActual;
+                }
+
                 let cuentaGuardada = localStorage.getItem('cuenta_' + nombreMesaActual);
                 if (cuentaGuardada) {
                     cuentaHistorica = JSON.parse(cuentaGuardada);
-                    // Nos aseguramos de que todo lo histórico tenga la bandera de impreso
                     cuentaHistorica.forEach(item => item.impreso = true);
                 }
                 
-                // Actualizamos la UI, que como cuentaNuevos está vacío, empezará en limpio.
                 actualizarTicketUI();
                 
             } else {
-                alert("Error: No se seleccionó ninguna mesa.");
-                window.location.href = "Comedor.html";
+                alert("Error: No se seleccionó ninguna orden o mesa activa.");
+                window.location.href = "AdminDashboard.html"; // Regresa al menú general
                 return;
             }
 
@@ -206,7 +212,15 @@
             cargarMenuDeBD();
         });
 
-        function volverComedor() { window.location.href = "Comedor.html"; }
+        // Retorna a Comedor o a Pedidos dependiendo de dónde vino
+        function volverAtras() { 
+            let esDomicilio = nombreMesaActual.toUpperCase().includes('DOMICILIO') || nombreMesaActual.toUpperCase().includes('LLEVAR') || nombreMesaActual.toUpperCase().includes('PEDIDO');
+            if(esDomicilio) {
+                window.location.href = "PedidosLlevar.html"; 
+            } else {
+                window.location.href = "Comedor.html"; 
+            }
+        }
 
         function cambiarMultiplicador(cambio) {
             cantidadGlobal += cambio;
@@ -219,11 +233,22 @@
             try {
                 let req = await fetch('cargar_menu.php');
                 let res = await req.json();
+                
+                // Si la sesión caducó, el PHP te mandará ese error. 
+                // Aquí lo atrapamos amigablemente y te regresamos al login.
+                if(res.message === 'Por favor inicia sesión primero') {
+                    alert("Tu sesión caducó por inactividad. Vuelve a ingresar.");
+                    window.location.href = "../Pagina_Principal/Pagina_Principal.html"; // Ajusta tu ruta de login
+                    return;
+                }
+
                 if(res.status === 'success') {
                     menuCompleto = res.productos; 
                     dibujarCategorias(res.categorias);
                 }
-            } catch (e) { alert("Error al cargar el menú."); }
+            } catch (e) { 
+                console.error(e);
+            }
         }
 
         function dibujarCategorias(categorias) {
@@ -262,13 +287,11 @@
                 let btn = document.createElement('div');
                 btn.className = 'btn-producto';
                 btn.innerHTML = `<span style="font-size: 13px; font-weight:bold;">${prod.NOMBRE}</span><div class="precio-badge">$ ${parseFloat(prod.PRECIO).toFixed(2)}</div>`;
-                // Al hacer clic, se agrega a los NUEVOS
                 btn.onclick = () => agregarAlTicket(prod, cantidadGlobal);
                 panel.appendChild(btn);
             });
         }
 
-        // 2. AGREGAR AL TICKET (SOLO MODIFICA cuentaNuevos)
         function agregarAlTicket(producto, cantidadAgregar) {
             let itemExistente = cuentaNuevos.find(item => item.id == producto.ID_PRODUCTO);
             
@@ -305,7 +328,6 @@
             actualizarTicketUI();
         }
 
-        // 3. ACTUALIZAR PANTALLA (SOLO DIBUJA cuentaNuevos)
         function actualizarTicketUI() {
             const panel = document.getElementById('ticketItems');
             panel.innerHTML = ''; let totalNuevos = 0;
@@ -329,29 +351,29 @@
             document.getElementById('ticketTotal').innerText = `POR ENVIAR: $${totalNuevos.toFixed(2)}`;
         }
 
-        // 4. LÓGICA DE IMPRESIÓN Y FUSIÓN DE DATOS
-        // Le agregamos la palabra 'async' para poder esperar la respuesta de PHP
         async function enviarACocina() {
             if (cuentaNuevos.length === 0) {
                 return alert("No hay productos nuevos para enviar a cocina.");
             }
 
-            // 1. PREPARAMOS LOS DATOS PARA PHP
             let formData = new FormData();
             formData.append('mesa', nombreMesaActual);
-            // Convertimos los productos nuevos a JSON para que PHP los entienda
             formData.append('productos', JSON.stringify(cuentaNuevos)); 
 
             try {
-                // 2. ENVIAMOS LA ORDEN A LA BASE DE DATOS
                 let respuesta = await fetch('guardar_comanda.php', { method: 'POST', body: formData });
                 let data = await respuesta.json();
 
                 if (data.status !== 'success') {
+                    // Si PHP rechaza porque no hay sesión, avisamos
+                    if(data.message && data.message.includes('sesión')) {
+                         alert("Tu sesión caducó por inactividad. Vuelve a ingresar.");
+                         window.location.href = "../Pagina_Principal/Pagina_Principal.html"; 
+                         return;
+                    }
                     return alert("Error en Base de Datos: " + data.message);
                 }
 
-                // Si PHP dice 'success', entonces sí procedemos a imprimir
                 let categorias = {};
                 cuentaNuevos.forEach(item => {
                     let cat = item.categoria || 'COCINA GENERAL'; 
@@ -362,7 +384,6 @@
                 let fecha = new Date().toLocaleString('es-MX');
                 let delay = 0; 
 
-                // Imprimir área por área (con el folio real de SQL Server)
                 for (let cat in categorias) {
                     setTimeout(() => {
                         let itemsHTML = "";
@@ -381,7 +402,7 @@
                             <body>
                                 <div style="text-align: center; font-weight: bold; font-size: 16px; border-bottom: 2px solid #000; margin-bottom: 5px; padding-bottom: 5px;">*** ${cat.toUpperCase()} ***</div>
                                 <div style="font-size: 12px; margin-bottom: 10px;">
-                                    MESA: <b>${nombreMesaActual}</b><br>
+                                    MESA/ORDEN: <b>${nombreMesaActual}</b><br>
                                     FOLIO: <b>${data.folio}</b><br>
                                     FECHA: ${fecha}
                                 </div>
@@ -403,14 +424,12 @@
                     delay += 1500; 
                 }
 
-                // 3. LIMPIAMOS MEMORIA LOCAL Y REGRESAMOS
-                cuentaNuevos = []; // Vaciamos lo nuevo
-                
-                // Mantenemos la mesa pintada de rojo en el Comedor
+                cuentaNuevos = []; 
                 localStorage.setItem('estado_' + nombreMesaActual, 'ocupada');
 
+                // REDIRECCIONA AUTOMÁTICAMENTE AL LUGAR CORRECTO
                 setTimeout(() => {
-                    window.location.href = "Comedor.html";
+                    volverAtras();
                 }, delay + 500);
 
             } catch (error) {

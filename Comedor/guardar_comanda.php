@@ -23,24 +23,35 @@ try {
     $folio = 0;
 
     if($cuenta) {
-        // Si ya tenía cuenta abierta (ej. pidieron más cosas), usamos ese Folio
+        // Si ya tenía cuenta abierta, usamos ese Folio
         $folio = $cuenta['FOLIO'];
     } else {
-        // Si es la primera orden, calculamos qué número de orden le toca y creamos la cuenta
+        // --- LA ESTRATEGIA INFALIBLE ---
+        
+        // A. Calculamos qué número de orden le toca
         $stmtOrden = $conn->prepare("SELECT ISNULL(MAX(NUM_ORDEN), 0) + 1 AS SIGUIENTE FROM CUENTA WHERE ID_TURNO = :turno");
         $stmtOrden->execute([':turno' => $idTurno]);
         $numOrden = $stmtOrden->fetch(PDO::FETCH_ASSOC)['SIGUIENTE'];
 
+        // B. Hacemos el INSERT puro y duro. Sin pedir el ID de regreso para no confundir a PHP.
         $sqlInsertCuenta = "INSERT INTO CUENTA (NUM_ORDEN, ID_TURNO, TIPO_ORDEN, IDENTIFICADOR, ESTADO) 
-                            VALUES (:orden, :turno, 'Comedor', :mesa, 'Pendiente');
-                            SELECT SCOPE_IDENTITY() AS FOLIO;"; // Truco SQL Server para obtener el ID generado
-        
+                            VALUES (:orden, :turno, 'Comedor', :mesa, 'Pendiente')"; 
         $stmtInsert = $conn->prepare($sqlInsertCuenta);
         $stmtInsert->execute([':orden' => $numOrden, ':turno' => $idTurno, ':mesa' => $mesa]);
         
-        // Avanzamos al siguiente resultado para capturar el FOLIO
-        $stmtInsert->nextRowset(); 
-        $folio = $stmtInsert->fetch(PDO::FETCH_ASSOC)['FOLIO'];
+        // C. Volvemos a consultar la base de datos para recuperar el folio que se acaba de crear
+        $stmtGetFolio = $conn->prepare($sqlCuenta); // Reutilizamos la consulta del paso 2
+        $stmtGetFolio->execute([':mesa' => $mesa, ':turno' => $idTurno]);
+        $nuevaCuenta = $stmtGetFolio->fetch(PDO::FETCH_ASSOC);
+        
+        if ($nuevaCuenta) {
+            $folio = $nuevaCuenta['FOLIO'];
+        }
+    }
+
+    // Candado de seguridad vital
+    if (!$folio) {
+        throw new Exception("Error crítico: No se pudo recuperar el folio de la cuenta.");
     }
 
     // 3. Guardamos los platillos en DETALLE_CUENTA

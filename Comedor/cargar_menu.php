@@ -1,5 +1,6 @@
 <?php
-// cargar_menu.php
+session_start(); // <-- ¡Esta es la llave maestra que faltaba!
+
 require_once '../Conexion.php';
 
 try {

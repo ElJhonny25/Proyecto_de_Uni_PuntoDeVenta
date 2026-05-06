@@ -119,68 +119,86 @@
         let totalAPagar = 0;
         let estadoMesaSeleccionada = null;
         let itemsActuales = [];
-        let folioActivo = null; // Guardamos el folio para mandarlo a pagar a SQL
+        let folioActivo = null; 
+        let actualizandoMesas = false; // Candado para evitar choques de peticiones
 
         document.addEventListener("DOMContentLoaded", function() {
             cargarMesasPendientes();
-            
-            // EL TRUCO: Ejecuta la función de recargar cada 4000 milisegundos (4 segundos)
-            setInterval(cargarMesasPendientes, 4000); 
+            // Ejecuta la función de recargar cada 3000 milisegundos (3 segundos)
+            setInterval(cargarMesasPendientes, 1000); 
         });
 
-        // --- 1. CARGAR MESAS DESDE LA BASE DE DATOS ---
+        // --- 1. CARGAR MESAS DESDE LA BASE DE DATOS (CON PROMISE.ALL) ---
         async function cargarMesasPendientes() {
-            const panel = document.getElementById('listaMesasPendientes');
-            panel.innerHTML = '';
-            
+            if (actualizandoMesas) return;
+            actualizandoMesas = true;
+
             try {
                 let req = await fetch('../Comedor/cargar_comedor.php');
                 let res = await req.json();
                 
                 if(res.status === 'success') {
-                    // Filtramos mesas ocupadas (rojo) y sucias/impresas (amarillo)
+                    const panel = document.getElementById('listaMesasPendientes');
                     const mesasFiltradas = res.mesas.filter(m => m.estado === 'ocupada' || m.estado === 'sucia');
 
                     if (mesasFiltradas.length === 0) {
                         panel.innerHTML = '<div style="text-align: center; color: #aaa; margin-top: 20px;">No hay cuentas activas.</div>';
+                        actualizandoMesas = false;
                         return;
-                        // (Aquí termina el forEach donde dibujas los botones de las mesas)
-                    
-                    // --- AGREGA ESTO ---
-                    // Volver a iluminar la mesa si el cajero la tiene seleccionada
-                    if (mesaSeleccionada) {
-                        let btnActivo = document.getElementById('btn-mesa-' + mesaSeleccionada);
-                        if (btnActivo) btnActivo.classList.add('active');
-                    }
                     }
 
-                    // Iteramos sobre las mesas ocupadas o sucias
-                    mesasFiltradas.forEach(async (m) => {
-                        // SOLUCIÓN CLAVE: Consultar a cargar_cuenta_mesa.php
+                    // 1. Lanzamos TODAS las peticiones al mismo tiempo
+                    let peticiones = mesasFiltradas.map(async (m) => {
                         try {
                             let cuentaReq = await fetch(`../Comedor/cargar_cuenta_mesa.php?mesa=${encodeURIComponent(m.nombre)}`);
                             let cuentaRes = await cuentaReq.json();
-
-                            let totalMesa = 0;
-                            if (cuentaRes.status === 'success') {
-                                totalMesa = parseFloat(cuentaRes.total);
-                                
-                            }
-
-                            let btn = document.createElement('button');
-                            btn.className = `btn-mesa-cobro ${m.estado}`;
-                            btn.id = 'btn-mesa-' + m.nombre;
-                            btn.innerHTML = `MESA ${m.nombre} <span class="badge-total">$${totalMesa.toFixed(2)}</span>`;
-                            
-                            // Pasamos el folio a cargarDetalle
-                            btn.onclick = () => cargarDetalle(m.nombre, totalMesa, m.estado, cuentaRes.folio, cuentaRes.items);
-                            panel.appendChild(btn);
-
-                        } catch(e) { console.error("Error al cargar la cuenta de", m.nombre, e); }
+                            return { mesa: m, data: cuentaRes };
+                        } catch(e) {
+                            return null;
+                        }
                     });
-                }
-            } catch(e) { console.error("Error al cargar mesas", e); }
 
+                    // 2. Esperamos a que TODAS respondan
+                    let resultados = await Promise.all(peticiones);
+
+                    // 3. Armamos los botones en la memoria invisible
+                    let fragmento = document.createDocumentFragment();
+
+                    resultados.forEach(item => {
+                        if(!item) return; 
+                        
+                        let m = item.mesa;
+                        let cuentaRes = item.data;
+
+                        let totalMesa = 0;
+                        if (cuentaRes.status === 'success') {
+                            totalMesa = parseFloat(cuentaRes.total);
+                        }
+
+                        let btn = document.createElement('button');
+                        btn.className = `btn-mesa-cobro ${m.estado}`;
+                        btn.id = 'btn-mesa-' + m.nombre;
+                        btn.innerHTML = `MESA ${m.nombre} <span class="badge-total">$${totalMesa.toFixed(2)}</span>`;
+                        
+                        btn.onclick = () => cargarDetalle(m.nombre, totalMesa, m.estado, cuentaRes.folio, cuentaRes.items);
+                        
+                        // Mantener iluminada la mesa seleccionada
+                        if (mesaSeleccionada === m.nombre) {
+                            btn.classList.add('active');
+                        }
+
+                        fragmento.appendChild(btn);
+                    });
+
+                    // 4. Solo aquí borramos e insertamos (adiós parpadeo y duplicados)
+                    panel.innerHTML = '';
+                    panel.appendChild(fragmento);
+                }
+            } catch(e) { 
+                console.error("Error al cargar mesas", e); 
+            } finally {
+                actualizandoMesas = false; // Soltamos el candado
+            }
         }
 
         // --- 2. MOSTRAR DETALLE EN CAJA ---
@@ -188,11 +206,14 @@
             mesaSeleccionada = nombre;
             totalAPagar = total;
             estadoMesaSeleccionada = estado;
-            folioActivo = folio; // Lo necesitamos para el cobro
-            itemsActuales = items || []; // Los items que trae de la base de datos
+            folioActivo = folio; 
+            itemsActuales = items || []; 
 
             document.querySelectorAll('.btn-mesa-cobro').forEach(b => b.classList.remove('active'));
-            document.getElementById('btn-mesa-' + nombre).classList.add('active');
+            let botonParaActivar = document.getElementById('btn-mesa-' + nombre);
+            if(botonParaActivar) {
+                botonParaActivar.classList.add('active');
+            }
 
             document.getElementById('ticketMesaTitulo').innerText = `Cuenta ${nombre} (Folio ${folio || 'N/A'})`;
             document.getElementById('ticketTotalCaja').innerText = `TOTAL: $${total.toFixed(2)}`;
@@ -200,7 +221,6 @@
             let html = "";
             if (itemsActuales.length > 0) {
                 itemsActuales.forEach(i => {
-                    // Usamos las claves de la base de datos: i.CANTIDAD, i.NOMBRE, i.SUBTOTAL
                     html += `<div class="item-comanda"><span>${i.CANTIDAD}x ${i.NOMBRE}</span><span>$${parseFloat(i.SUBTOTAL).toFixed(2)}</span></div>`;
                 });
             } else {
@@ -329,13 +349,11 @@
                 ventanaImpresion.print(); 
                 
                 // --- CAMBIO DE ESTADO A SUCIA (AMARILLA) ---
-                // Le avisamos al Comedor que la mesa cambió
                 localStorage.setItem('comandoMesa', JSON.stringify({ nombre: mesaSeleccionada, estado: 'sucia' }));
                 
-                // NOTA: Si quisieras que el estado de 'sucia' persistiera en la base de datos (por si se reinicia la laptop)
-                // aquí deberías hacer un fetch('cambiar_estado_mesa.php', { method: 'POST', body: ... })
-                
-                cargarMesasPendientes(); // Recargamos la interfaz
+                // Forzamos actualización visual rápida soltando el candado
+                actualizandoMesas = false; 
+                cargarMesasPendientes(); 
             }, 500);
         }
 
@@ -344,7 +362,6 @@
             if(!mesaSeleccionada || estadoMesaSeleccionada !== 'sucia' || !folioActivo) return;
             
             try {
-                // AQUÍ HACEMOS LA LLAMADA A PHP PARA COBRAR EN SQL SERVER
                 let formData = new FormData();
                 formData.append('folio', folioActivo);
 
@@ -359,9 +376,7 @@
                     alert(`✅ COBRO PROCESADO\nMesa liquidada correctamente en el sistema.`);
                     
                     // --- LIBERAR LA MESA VISUALMENTE ---
-                    // Borramos la cuenta vieja del localStorage (por limpieza)
                     localStorage.removeItem('cuenta_' + mesaSeleccionada);
-                    // Le decimos al Comedor.html que la ponga en verde al instante
                     localStorage.setItem('estado_' + mesaSeleccionada, 'libre');
                     localStorage.setItem('comandoMesa', JSON.stringify({ nombre: mesaSeleccionada, estado: 'libre' }));
 
@@ -377,7 +392,10 @@
                     document.querySelectorAll('.btn-billete').forEach(b => b.disabled = true);
                     
                     limpiarEfectivo();
-                    cargarMesasPendientes(); // Recarga la lista (la mesa ya no debería aparecer)
+                    
+                    // Forzamos actualización visual rápida soltando el candado
+                    actualizandoMesas = false;
+                    cargarMesasPendientes(); 
                 } else {
                     alert("Error en la Base de Datos: " + res.message);
                 }
