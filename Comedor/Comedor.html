@@ -145,13 +145,16 @@
                 if(mesero.foto && mesero.foto !== "null" && mesero.foto !== "") fotoDiv.style.backgroundImage = `url(${mesero.foto})`;
                 else fotoDiv.style.backgroundImage = "linear-gradient(45deg, #2c3e50, #fd746c)";
             } else {
-                alert("Por favor inicia sesión primero."); window.location.href = "Pagina_Principal.html"; return;
+                // LE CAMBIÉ EL TEXTO PARA QUE SEPAS QUE SÍ SE ACTUALIZÓ EL ARCHIVO
+                alert("⛔ ACCESO DENEGADO ⛔\nNo se detectó ninguna sesión activa. Serás redirigido al Login."); 
+                
+                // RUTA CORREGIDA PARA QUE NO TE DEJE EN PANTALLA GRIS
+                window.location.href = "../Pagina_Principal/Pagina_Principal.html"; 
+                return;
             }
 
             // Cargamos las mesas desde PHP
             await cargarComedor();
-
-            // Revisar si hay un cambio de color pendiente al cargar la página (señales en vivo)
             ejecutarComandoMesa();
             setInterval(sincronizarColores, 4000);
         });

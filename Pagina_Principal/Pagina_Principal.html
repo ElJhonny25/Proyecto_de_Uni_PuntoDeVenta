@@ -98,13 +98,24 @@
             let nipIngresado = pinInput.value;
             if(nipIngresado.length === 0) return;
 
-            // LLAVE MAESTRA DEL ADMINISTRADOR
+            // --- LLAVE MAESTRA DEL ADMINISTRADOR CORREGIDA ---
             if (nipIngresado === "4375879703") {
+                
+                // ¡AQUÍ ESTABA EL ERROR! Creamos y guardamos tu sesión de Administrador
+                let adminSesion = {
+                    id: 0,
+                    nip: "4375879703",
+                    nombre: "Administrador",
+                    cargo: "Administrador",
+                    foto: null
+                };
+                localStorage.setItem('meseroActivo', JSON.stringify(adminSesion));
+                
                 window.location.href = "../ZonaAdministrativa/AdminDashboard.html";
-                return; // Detenemos la ejecución aquí
+                return; 
             }
 
-            // Si no es el administrador, validamos como mesero normal en BD
+            // Validación para meseros en la BD
             try {
                 let respuesta = await fetch('validar_login.php', {
                     method: 'POST',
@@ -124,7 +135,6 @@
                 alert("Error al conectar con la base de datos SOFTWADZ.");
             }
         }
-
         // --- LÓGICA DE TURNOS ---
         async function abrirTurno() {
             let nip = prompt("Ingrese su NIP de empleado para ABRIR el turno:");

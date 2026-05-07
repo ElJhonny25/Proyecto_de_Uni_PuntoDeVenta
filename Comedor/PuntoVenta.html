@@ -165,6 +165,7 @@
         let idCategoriaActiva = null;
         let cantidadGlobal = 1;
         let nombreMesaActual = "";
+        let esDomicilio = false; // Variable global para usarla en toda la pantalla
 
         document.addEventListener("DOMContentLoaded", function() {
             const root = document.documentElement;
@@ -181,8 +182,8 @@
             if(mesa && mesa.nombre) {
                 nombreMesaActual = mesa.nombre;
                 
-                // MÁGIA PARA DETECTAR SI ES REPARTIDOR O MESERO
-                let esDomicilio = nombreMesaActual.toUpperCase().includes('DOMICILIO') || nombreMesaActual.toUpperCase().includes('LLEVAR') || nombreMesaActual.toUpperCase().includes('PEDIDO');
+                // EVALUAMOS SI ES DOMICILIO/LLEVAR
+                esDomicilio = nombreMesaActual.toUpperCase().includes('DOMICILIO') || nombreMesaActual.toUpperCase().includes('LLEVAR') || nombreMesaActual.toUpperCase().includes('PEDIDO') || nombreMesaActual.toUpperCase().includes('FOLIO');
 
                 if(esDomicilio) {
                     document.getElementById('tituloMesa').innerText = "ORDEN: " + nombreMesaActual;
@@ -202,7 +203,7 @@
                 
             } else {
                 alert("Error: No se seleccionó ninguna orden o mesa activa.");
-                window.location.href = "AdminDashboard.html"; // Regresa al menú general
+                window.location.href = "AdminDashboard.html"; 
                 return;
             }
 
@@ -212,11 +213,10 @@
             cargarMenuDeBD();
         });
 
-        // Retorna a Comedor o a Pedidos dependiendo de dónde vino
+        // Retorna a Comedor o a Pedidos
         function volverAtras() { 
-            let esDomicilio = nombreMesaActual.toUpperCase().includes('DOMICILIO') || nombreMesaActual.toUpperCase().includes('LLEVAR') || nombreMesaActual.toUpperCase().includes('PEDIDO');
             if(esDomicilio) {
-                window.location.href = "PedidosLlevar.html"; 
+                window.location.href = "../ZonaAdministrativa/PedidosLlevar.html"; 
             } else {
                 window.location.href = "Comedor.html"; 
             }
@@ -234,11 +234,9 @@
                 let req = await fetch('cargar_menu.php');
                 let res = await req.json();
                 
-                // Si la sesión caducó, el PHP te mandará ese error. 
-                // Aquí lo atrapamos amigablemente y te regresamos al login.
                 if(res.message === 'Por favor inicia sesión primero') {
                     alert("Tu sesión caducó por inactividad. Vuelve a ingresar.");
-                    window.location.href = "../Pagina_Principal/Pagina_Principal.html"; // Ajusta tu ruta de login
+                    window.location.href = "../Pagina_Principal/Pagina_Principal.html"; 
                     return;
                 }
 
@@ -365,7 +363,6 @@
                 let data = await respuesta.json();
 
                 if (data.status !== 'success') {
-                    // Si PHP rechaza porque no hay sesión, avisamos
                     if(data.message && data.message.includes('sesión')) {
                          alert("Tu sesión caducó por inactividad. Vuelve a ingresar.");
                          window.location.href = "../Pagina_Principal/Pagina_Principal.html"; 
@@ -424,10 +421,18 @@
                     delay += 1500; 
                 }
 
+                // --- SOLUCIÓN DEL MONITOR: GUARDAR EN LA MEMORIA (localStorage) ---
+                let cuentaFinal = cuentaHistorica.concat(cuentaNuevos);
+                localStorage.setItem('cuenta_' + nombreMesaActual, JSON.stringify(cuentaFinal));
+                
                 cuentaNuevos = []; 
-                localStorage.setItem('estado_' + nombreMesaActual, 'ocupada');
+                
+                if (esDomicilio) {
+                    localStorage.setItem('estado_' + nombreMesaActual, 'preparando');
+                } else {
+                    localStorage.setItem('estado_' + nombreMesaActual, 'ocupada');
+                }
 
-                // REDIRECCIONA AUTOMÁTICAMENTE AL LUGAR CORRECTO
                 setTimeout(() => {
                     volverAtras();
                 }, delay + 500);
