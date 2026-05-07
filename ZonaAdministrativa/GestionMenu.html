@@ -42,13 +42,13 @@
         <div class="form-group">
             <label>Categoría *</label>
             <select id="categoriaProducto" class="form-input">
-                <option value="1">Entradas</option>
-                <option value="2">Cortes Y Carne</option>
-                <option value="3">Mariscos</option>
-                <option value="4">Bebidas</option>
-                <option value="5">Postres</option>
-                <option value="6">Sushi</option> 
-            </select>
+    <option value="1">Entradas</option>
+    <option value="2">Cortes Y Carne</option>
+    <option value="3">Mariscos</option>
+    <option value="4">Bebidas</option>
+    <option value="5">Postres</option>
+    <option value="6">Sushi</option>
+</select>
         </div>
 
         <div class="botones-container">
@@ -70,20 +70,25 @@
         cargarDiseno();
 
         async function guardarProducto() {
-            let nombre = document.getElementById('nombreProducto').value;
-            let precio = document.getElementById('precioProducto').value;
-            let id_categoria = document.getElementById('categoriaProducto').value;
+            let nombreInput = document.getElementById('nombreProducto');
+            let precioInput = document.getElementById('precioProducto');
+            let categoriaSelect = document.getElementById('categoriaProducto');
+
+            let nombre = nombreInput.value.trim();
+            let precio = precioInput.value;
+            let id_categoria = categoriaSelect.value;
 
             if (!nombre || !precio || precio <= 0) {
                 alert("Por favor ingresa un nombre y un precio válido mayor a 0.");
                 return;
             }
 
+            // Enviamos los datos con formato estricto
             let datos = { 
-                nombre: nombre, 
-                precio: precio, 
-                id_categoria: id_categoria 
-            };
+    nombre: nombre, 
+    precio: precio, 
+    id_categoria: id_categoria  // ← Debe ser el value del <select> (1, 2, 3, etc.)
+};
 
             let btnGuardar = document.querySelector('.btn-guardar');
             btnGuardar.innerText = "Guardando...";
@@ -91,18 +96,18 @@
 
             try {
                 let respuesta = await fetch('guardar_producto.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(datos)
-                });
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(datos)
+});
                 
                 let resultado = await respuesta.json();
 
                 if (resultado.status === 'success') {
                     alert("✅ " + resultado.message);
-                    document.getElementById('nombreProducto').value = '';
-                    document.getElementById('precioProducto').value = '';
-                    document.getElementById('nombreProducto').focus();
+                    nombreInput.value = '';
+                    precioInput.value = '';
+                    nombreInput.focus();
                 } else {
                     alert("❌ " + resultado.message);
                 }
