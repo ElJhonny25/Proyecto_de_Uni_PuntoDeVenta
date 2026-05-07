@@ -1,24 +1,32 @@
 <?php
+session_start();
 require_once '../Conexion.php';
+
+// Leemos el JSON tal como lo tenías originalmente
 $data = json_decode(file_get_contents('php://input'), true);
 
 if (isset($data['nombre']) && isset($data['precio']) && isset($data['id_categoria'])) {
     try {
-        // Como la tabla tiene ACTIVO BIT DEFAULT 1, SQL Server lo llenará automáticamente
+        $nombre = trim($data['nombre']);
+        $precio = $data['precio'];
+        $id_categoria = $data['id_categoria'];
+
+        // Tu INSERT original (SQL Server llenará el ACTIVO automáticamente con 1)
         $sql = "INSERT INTO PRODUCTO (NOMBRE, PRECIO, ID_CATEGORIA) 
                 VALUES (:nombre, :precio, :id_categoria)";
         
         $stmt = $conn->prepare($sql);
-        $stmt->execute([
-            ':nombre' => trim($data['nombre']),
-            ':precio' => $data['precio'],
-            ':id_categoria' => $data['id_categoria']
-        ]);
+        
+        // bindParam vincula la variable directamente y evita el bug del valor NULL
+        $stmt->bindParam(':nombre', $nombre);
+        $stmt->bindParam(':precio', $precio);
+        $stmt->bindParam(':id_categoria', $id_categoria);
+        
+        $stmt->execute();
         
         echo json_encode(["status" => "success", "message" => "¡Platillo agregado al menú de SOFTWADZ exitosamente!"]);
-        
+
     } catch (PDOException $e) {
-        // Manejo de errores amigable si se viola alguna regla (como intentar poner precio 0)
         echo json_encode(["status" => "error", "message" => "Error de BD: " . $e->getMessage()]);
     }
 } else {
