@@ -1,0 +1,103 @@
+    <!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Turnos - SOFTWADZ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-dark: #12151a; --text-main: #ffffff; --accent: #ff7f2a; --danger: #dc3545; --success: #28a745; }
+        body { margin: 0; font-family: 'Montserrat', sans-serif; color: var(--text-main); background-color: var(--bg-dark); padding: 30px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid var(--accent); padding-bottom: 10px; }
+        .btn-volver { background: transparent; color: white; border: 1px solid #555; padding: 10px 20px; border-radius: 5px; cursor: pointer; transition: 0.2s; }
+        .btn-volver:hover { background: var(--danger); border-color: var(--danger); }
+        .dashboard-container { display: flex; gap: 20px; }
+        .card { background: #1e232b; border: 1px solid #30363d; border-radius: 12px; padding: 20px; flex: 1; }
+        .card h3 { margin-top: 0; color: var(--accent); text-align: center; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th { background: #0d1117; padding: 12px; text-align: left; border-bottom: 2px solid #30363d; }
+        td { padding: 12px; border-bottom: 1px solid #30363d; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .badge.open { background: rgba(40, 167, 69, 0.2); color: var(--success); border: 1px solid var(--success); }
+        .btn-forzar { background: var(--danger); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold;}
+        .btn-forzar:hover { filter: brightness(1.2); }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>⏰ Gestor de Turnos de Personal</h2>
+        <button class="btn-volver" onclick="window.location.href='AdminDashboard.html'">⬅ Volver al Dashboard</button>
+    </div>
+
+    <div class="dashboard-container">
+        <div class="card">
+            <h3>Personal Actualmente en Turno</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Empleado</th>
+                        <th>Cargo</th>
+                        <th>Hora Entrada</th>
+                        <th>Estado</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaEmpleados">
+                    <tr><td colspan="5" style="text-align: center; color: #888;">Cargando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", cargarTurnos);
+
+        async function cargarTurnos() {
+            try {
+                let req = await fetch('obtener_turnos_activos.php');
+                let res = await req.json();
+                let tbody = document.getElementById('tablaEmpleados');
+                tbody.innerHTML = '';
+
+                if (res.status === 'success') {
+                    if(res.data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888;">Nadie ha checado entrada aún.</td></tr>';
+                        return;
+                    }
+
+                    res.data.forEach(t => {
+                        let hora = new Date(t.HORA_INICIO).toLocaleTimeString('es-MX');
+                        tbody.innerHTML += `
+                            <tr>
+                                <td><b>${t.NOMBRE}</b></td>
+                                <td>${t.CARGO}</td>
+                                <td>${hora}</td>
+                                <td><span class="badge open">TRABAJANDO</span></td>
+                                <td><button class="btn-forzar" onclick="forzarSalida(${t.ID_TURNO_EMP}, '${t.NOMBRE}')">Forzar Salida</button></td>
+                            </tr>
+                        `;
+                    });
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        async function forzarSalida(idTurnoEmp, nombre) {
+    if(!confirm(`¿Deseas finalizar el turno de ${nombre} de manera administrativa?`)) return;
+    
+    try {
+        let req = await fetch('forzar_cierre_empleado.php', {
+            method: 'POST',
+            body: JSON.stringify({ id: idTurnoEmp })
+        });
+        let res = await req.json();
+        if(res.status === 'success') {
+            alert(res.message);
+            cargarTurnos(); // Refresca la tabla
+        }
+    } catch(e) { alert("Error al conectar."); }
+}
+    </script>
+</body>
+</html>

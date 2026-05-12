@@ -602,6 +602,18 @@
                 // Si falla la conexión un segundo, lo ignoramos silenciosamente
             }
         }
+
+        function habilitarEdicion() {
+    // Obtenemos los datos que guardamos al entrar
+    let mesero = JSON.parse(localStorage.getItem('meseroActivo'));
+
+    // 🛡️ VALIDACIÓN: Ahora que el PHP envía "CARGO", lo leemos así
+    if (mesero && mesero.CARGO === 'Administrador') {
+        window.location.href = 'EditarDisenoComedor.html';
+    } else {
+        alert("⛔ No tienes permisos de Administrador para modificar el diseño del comedor.");
+    }
+}
     </script>
 </body>
 </html>

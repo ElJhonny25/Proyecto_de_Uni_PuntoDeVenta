@@ -6,58 +6,123 @@
     <title>Gestión de Menú - SOFTWADZ</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        :root { --color-texto: #ffffff; --color-acento: #ff7f2a; }
-        body { color: var(--color-texto); background-color: var(--bg-principal, #1a1e24); background-size: cover; background-position: center; background-attachment: fixed; margin: 0; font-family: 'Montserrat', sans-serif; min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
-        .form-container { background: rgba(20, 20, 20, 0.6); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 35px; padding: 40px 35px; box-shadow: 0 15px 35px rgba(0,0,0,0.6), inset 0 0 15px rgba(255,255,255,0.05); width: 100%; max-width: 400px; display: flex; flex-direction: column; box-sizing: border-box; }
-        h2 { text-align: center; margin-top: 0; margin-bottom: 25px; font-weight: 700; font-size: 22px; color: #ffffff; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; }
-        .form-group { margin-bottom: 20px; width: 100%; }
-        .form-group label { display: block; margin-bottom: 8px; font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.6); letter-spacing: 1px; text-transform: uppercase; }
-        .form-input { width: 100%; padding: 15px; border-radius: 15px; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.2); color: var(--color-texto); box-sizing: border-box; font-family: 'Montserrat', sans-serif; font-size: 15px; outline: none; box-shadow: inset 0 2px 5px rgba(0,0,0,0.2); transition: border-color 0.3s; }
+        :root { --color-texto: #ffffff; --color-acento: #ff7f2a; --bg-panel: rgba(20, 20, 20, 0.7); }
+        body { color: var(--color-texto); background-color: #1a1e24; background-size: cover; background-position: center; background-attachment: fixed; margin: 0; font-family: 'Montserrat', sans-serif; height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; overflow: hidden; }
+        
+        .main-layout { display: flex; gap: 20px; width: 100%; max-width: 1100px; height: 90vh; }
+        
+        .panel { background: var(--bg-panel); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 25px; padding: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.6); display: flex; flex-direction: column; }
+        
+        .panel-izquierdo { flex: 0 0 350px; }
+        .panel-derecho { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+
+        h2 { text-align: center; margin-top: 0; margin-bottom: 20px; font-weight: 700; font-size: 20px; color: #ffffff; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; }
+        
+        .form-group { margin-bottom: 15px; width: 100%; }
+        .form-group label { display: block; margin-bottom: 5px; font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.6); letter-spacing: 1px; text-transform: uppercase; }
+        .form-input { width: 100%; padding: 12px; border-radius: 12px; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.2); color: var(--color-texto); box-sizing: border-box; font-family: 'Montserrat', sans-serif; font-size: 14px; outline: none; transition: 0.3s; }
         .form-input:focus { border-color: var(--color-acento); }
-        .form-input::placeholder { color: rgba(255, 255, 255, 0.3); }
         select.form-input option { background-color: #1a1e24; color: #ffffff; }
-        .botones-container { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
-        .btn { width: 100%; padding: 15px; border: none; border-radius: 25px; font-weight: bold; font-size: 15px; cursor: pointer; transition: all 0.3s ease; font-family: 'Montserrat', sans-serif; text-align: center; text-decoration: none; box-sizing: border-box; }
-        .btn-guardar { background-color: var(--color-acento); color: #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        
+        .botones-container { display: flex; flex-direction: column; gap: 10px; margin-top: auto; }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 15px; font-weight: bold; font-size: 14px; cursor: pointer; transition: 0.3s; text-align: center; text-decoration: none; box-sizing: border-box; }
+        .btn-guardar { background-color: var(--color-acento); color: #ffffff; }
         .btn-guardar:hover { filter: brightness(1.1); transform: translateY(-2px); }
         .btn-volver { background-color: transparent; color: var(--color-texto); border: 1px solid rgba(255,255,255,0.3); }
         .btn-volver:hover { background-color: rgba(255,255,255,0.1); }
+        .btn-cancelar { background-color: #dc3545; color: white; display: none; }
+
+        /* Estilos del Buscador */
+        .buscador-container { margin-bottom: 15px; display: flex; align-items: center; background: rgba(0,0,0,0.5); border-radius: 15px; border: 1px solid rgba(255,255,255,0.2); padding: 5px 15px; transition: 0.3s; }
+        .buscador-container:focus-within { border-color: var(--color-acento); box-shadow: 0 0 8px rgba(255,127,42,0.3); }
+        .buscador-input { background: transparent; border: none; color: white; width: 100%; padding: 10px 5px; outline: none; font-family: 'Montserrat', sans-serif; font-size: 14px; }
+        .buscador-input::placeholder { color: rgba(255,255,255,0.4); }
+
+        /* Estilos de la Tabla */
+        .tabla-container { flex: 1; overflow-y: auto; padding-right: 10px; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+        th { background: rgba(0,0,0,0.5); padding: 12px; position: sticky; top: 0; color: var(--color-acento); font-weight: 700; border-bottom: 2px solid rgba(255,255,255,0.1); z-index: 1;}
+        td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        tr:hover { background: rgba(255,255,255,0.05); }
+        
+        .btn-accion { background: transparent; border: 1px solid #555; color: white; padding: 5px 10px; border-radius: 5px; cursor: pointer; transition: 0.2s; font-size: 12px; }
+        .btn-editar:hover { background: #17a2b8; border-color: #17a2b8; }
+        .btn-eliminar:hover { background: #dc3545; border-color: #dc3545; }
+        .acciones-td { display: flex; gap: 5px; }
     </style>
 </head>
 <body>
 
-    <div class="form-container">
-        <h2>Agregar al Menú</h2>
+    <div class="main-layout">
+        <div class="panel panel-izquierdo">
+            <h2 id="tituloFormulario">Agregar Nuevo</h2>
 
-        <div class="form-group">
-            <label>Nombre del Platillo o Bebida *</label>
-            <input type="text" id="nombreProducto" class="form-input" placeholder="Ej. Hamburguesa Doble">
+            <input type="hidden" id="idProductoEditando" value="">
+
+            <div class="form-group">
+                <label>Nombre del Platillo o Bebida *</label>
+                <input type="text" id="nombreProducto" class="form-input" placeholder="Ej. Hamburguesa Doble">
+            </div>
+
+            <div class="form-group">
+                <label>Precio al Público ($) *</label>
+                <input type="number" id="precioProducto" class="form-input" placeholder="Ej. 120.50" step="0.01" min="1">
+            </div>
+
+            <div class="form-group">
+                <label>Categoría *</label>
+                <select id="categoriaProducto" class="form-input">
+                    <option value="1">Entradas</option>
+                    <option value="2">Cortes Y Carne</option>
+                    <option value="3">Mariscos</option>
+                    <option value="4">Bebidas</option>
+                    <option value="5">Postres</option>
+                    <option value="6">Sushi</option> 
+                </select>
+            </div>
+
+            <div class="botones-container">
+                <button class="btn btn-guardar" id="btnGuardar" onclick="procesarFormulario()">Guardar Producto</button>
+                <button class="btn btn-cancelar" id="btnCancelar" onclick="cancelarEdicion()">Cancelar Edición</button>
+                <a href="AdminDashboard.html" class="btn btn-volver">Volver al Inicio</a>
+            </div>
         </div>
 
-        <div class="form-group">
-            <label>Precio al Público ($) *</label>
-            <input type="number" id="precioProducto" class="form-input" placeholder="Ej. 120.50" step="0.01" min="1">
-        </div>
+        <div class="panel panel-derecho">
+            <h2>Menú Actual</h2>
+            
+            <div class="buscador-container">
+                <span style="font-size: 16px;">🔍</span>
+                <input type="text" id="inputBuscador" class="buscador-input" placeholder="Buscar por nombre o categoría..." oninput="filtrarMenu()">
+            </div>
 
-        <div class="form-group">
-            <label>Categoría *</label>
-            <select id="categoriaProducto" class="form-input">
-    <option value="1">Entradas</option>
-    <option value="2">Cortes Y Carne</option>
-    <option value="3">Mariscos</option>
-    <option value="4">Bebidas</option>
-    <option value="5">Postres</option>
-    <option value="6">Sushi</option>
-</select>
-        </div>
-
-        <div class="botones-container">
-            <button class="btn btn-guardar" onclick="guardarProducto()">Guardar Producto</button>
-            <a href="AdminDashboard.html" class="btn btn-volver">Volver al Inicio</a>
+            <div class="tabla-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Categoría</th>
+                            <th>Precio</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaProductos">
+                        <tr><td colspan="5" style="text-align: center; color: #888;">Cargando menú...</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <script>
+        const mapaCategorias = { 1: 'Entradas', 2: 'Cortes Y Carne', 3: 'Mariscos', 4: 'Bebidas', 5: 'Postres', 6: 'Sushi' };
+
+        document.addEventListener("DOMContentLoaded", () => {
+            cargarDiseno();
+            cargarTablaProductos();
+        });
+
         function cargarDiseno() {
             const root = document.documentElement;
             const colorTexto = localStorage.getItem('--color-texto');
@@ -67,55 +132,155 @@
             const savedBg = localStorage.getItem('bgRestaurante');
             if (savedBg) document.body.style.backgroundImage = `url(${savedBg})`;
         }
-        cargarDiseno();
 
-        async function guardarProducto() {
-            let nombreInput = document.getElementById('nombreProducto');
-            let precioInput = document.getElementById('precioProducto');
-            let categoriaSelect = document.getElementById('categoriaProducto');
+        // --- BÚSQUEDA EN TIEMPO REAL ---
+        function filtrarMenu() {
+            let input = document.getElementById("inputBuscador").value.toLowerCase();
+            let tabla = document.getElementById("tablaProductos");
+            let filas = tabla.getElementsByTagName("tr");
 
-            let nombre = nombreInput.value.trim();
-            let precio = precioInput.value;
-            let id_categoria = categoriaSelect.value;
+            for (let i = 0; i < filas.length; i++) {
+                // Si es la fila de "El menú está vacío", la ignoramos
+                if (filas[i].cells.length === 1) continue; 
 
-            if (!nombre || !precio || precio <= 0) {
-                alert("Por favor ingresa un nombre y un precio válido mayor a 0.");
-                return;
+                // Obtenemos las celdas de Nombre (índice 1) y Categoría (índice 2)
+                let tdNombre = filas[i].getElementsByTagName("td")[1];
+                let tdCategoria = filas[i].getElementsByTagName("td")[2];
+
+                if (tdNombre || tdCategoria) {
+                    let textoNombre = tdNombre.textContent || tdNombre.innerText;
+                    let textoCategoria = tdCategoria.textContent || tdCategoria.innerText;
+                    
+                    // Comparamos si el texto escrito coincide con el nombre o la categoría
+                    if (textoNombre.toLowerCase().indexOf(input) > -1 || textoCategoria.toLowerCase().indexOf(input) > -1) {
+                        filas[i].style.display = ""; // Mostramos
+                    } else {
+                        filas[i].style.display = "none"; // Ocultamos
+                    }
+                }       
             }
+        }
 
-            // Enviamos los datos con formato estricto
-            let datos = { 
-    nombre: nombre, 
-    precio: precio, 
-    id_categoria: id_categoria  // ← Debe ser el value del <select> (1, 2, 3, etc.)
-};
-
-            let btnGuardar = document.querySelector('.btn-guardar');
-            btnGuardar.innerText = "Guardando...";
-            btnGuardar.disabled = true;
-
+        // --- LEER PRODUCTOS ---
+        async function cargarTablaProductos() {
             try {
-                let respuesta = await fetch('guardar_producto.php', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(datos)
-});
-                
-                let resultado = await respuesta.json();
+                let respuesta = await fetch('cargar_productos.php');
+                let res = await respuesta.json();
+                let tbody = document.getElementById('tablaProductos');
+                tbody.innerHTML = '';
 
-                if (resultado.status === 'success') {
-                    alert("✅ " + resultado.message);
-                    nombreInput.value = '';
-                    precioInput.value = '';
-                    nombreInput.focus();
+                if (res.status === 'success') {
+                    if (res.data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888;">El menú está vacío.</td></tr>';
+                        return;
+                    }
+
+                    res.data.forEach(prod => {
+                        let catTexto = mapaCategorias[prod.ID_CATEGORIA] || 'Desconocida';
+                        let precioF = parseFloat(prod.PRECIO).toFixed(2);
+                        
+                        let tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td style="color:#888;">#${prod.ID_PRODUCTO}</td>
+                            <td style="font-weight:bold;">${prod.NOMBRE}</td>
+                            <td>${catTexto}</td>
+                            <td style="color:var(--color-acento); font-weight:bold;">$${precioF}</td>
+                            <td class="acciones-td">
+                                <button class="btn-accion btn-editar" onclick="prepararEdicion(${prod.ID_PRODUCTO}, '${prod.NOMBRE.replace(/'/g, "\\'")}', ${prod.PRECIO}, ${prod.ID_CATEGORIA})">✏️</button>
+                                <button class="btn-accion btn-eliminar" onclick="eliminarProducto(${prod.ID_PRODUCTO}, '${prod.NOMBRE.replace(/'/g, "\\'")}')">🗑️</button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
                 } else {
-                    alert("❌ " + resultado.message);
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:red;">Error al cargar.</td></tr>';
                 }
             } catch (error) {
-                alert("Error al conectar con la base de datos.");
+                console.error(error);
+            }
+        }
+
+        // --- CREAR O ACTUALIZAR ---
+        async function procesarFormulario() {
+            let idEditando = document.getElementById('idProductoEditando').value;
+            let nombre = document.getElementById('nombreProducto').value.trim();
+            let precio = document.getElementById('precioProducto').value;
+            let id_categoria = document.getElementById('categoriaProducto').value;
+
+            if (!nombre || !precio || precio <= 0) {
+                alert("Completa correctamente el nombre y el precio."); return;
+            }
+
+            let url = idEditando === '' ? 'guardar_producto.php' : 'editar_producto.php';
+            let datos = { nombre: nombre, precio: precio, id_categoria: id_categoria };
+            if (idEditando !== '') datos.id = idEditando;
+
+            let btnGuardar = document.getElementById('btnGuardar');
+            btnGuardar.innerText = "Procesando..."; btnGuardar.disabled = true;
+
+            try {
+                let req = await fetch(url, { method: 'POST', body: JSON.stringify(datos) });
+                let res = await req.json();
+
+                if (res.status === 'success') {
+                    cancelarEdicion(); 
+                    cargarTablaProductos(); 
+                    document.getElementById('inputBuscador').value = ''; // Limpiamos el buscador al guardar
+                } else {
+                    alert("❌ " + res.message);
+                }
+            } catch (error) {
+                alert("Error de conexión.");
             } finally {
-                btnGuardar.innerText = "Guardar Producto";
+                btnGuardar.innerText = idEditando === '' ? "Guardar Producto" : "Actualizar Producto";
                 btnGuardar.disabled = false;
+            }
+        }
+
+        // --- PREPARAR EDICIÓN ---
+        function prepararEdicion(id, nombre, precio, id_categoria) {
+            document.getElementById('tituloFormulario').innerText = "Editar Platillo";
+            document.getElementById('tituloFormulario').style.color = "var(--color-acento)";
+            
+            document.getElementById('idProductoEditando').value = id;
+            document.getElementById('nombreProducto').value = nombre;
+            document.getElementById('precioProducto').value = precio;
+            document.getElementById('categoriaProducto').value = id_categoria;
+
+            document.getElementById('btnGuardar').innerText = "Actualizar Producto";
+            document.getElementById('btnCancelar').style.display = "block";
+            document.getElementById('nombreProducto').focus();
+        }
+
+        function cancelarEdicion() {
+            document.getElementById('tituloFormulario').innerText = "Agregar Nuevo";
+            document.getElementById('tituloFormulario').style.color = "#ffffff";
+            
+            document.getElementById('idProductoEditando').value = '';
+            document.getElementById('nombreProducto').value = '';
+            document.getElementById('precioProducto').value = '';
+            document.getElementById('categoriaProducto').value = '1';
+
+            document.getElementById('btnGuardar').innerText = "Guardar Producto";
+            document.getElementById('btnCancelar').style.display = "none";
+        }
+
+        // --- ELIMINAR ---
+        async function eliminarProducto(id, nombre) {
+            if (!confirm(`¿Estás seguro de eliminar "${nombre}" del menú?`)) return;
+
+            try {
+                let req = await fetch('eliminar_producto.php', { method: 'POST', body: JSON.stringify({ id: id }) });
+                let res = await req.json();
+
+                if (res.status === 'success') {
+                    cargarTablaProductos();
+                    document.getElementById('inputBuscador').value = ''; // Limpiamos buscador al borrar
+                } else {
+                    alert("Error: " + res.message);
+                }
+            } catch (error) {
+                alert("Error de conexión al eliminar.");
             }
         }
     </script>

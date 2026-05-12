@@ -18,10 +18,13 @@
         .panel-header { background: #161b22; padding: 12px 15px; font-weight: 700; font-size: 14px; text-transform: uppercase; border-bottom: 1px solid #30363d; color: var(--accent); text-align: center; letter-spacing: 1px;}
         .panel-body { padding: 15px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
         .col-captura { width: 25%; }
+        
         .input-group { display: flex; flex-direction: column; gap: 4px; }
         .input-group label { font-size: 11px; color: var(--text-muted); font-weight: 600; }
         .input-group input { background: #0d1117; border: 1px solid #30363d; color: white; padding: 10px; border-radius: 6px; font-family: inherit; outline: none; transition: 0.2s; }
         .input-group input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(255,127,42,0.2); }
+        .input-group input.error { border-color: var(--danger); box-shadow: 0 0 5px rgba(220, 53, 69, 0.5); }
+        
         .btn-main { background: var(--accent); color: white; border: none; padding: 15px; border-radius: 6px; font-weight: 700; font-size: 14px; cursor: pointer; margin-top: auto; transition: 0.2s; text-transform: uppercase; }
         .btn-main:hover { filter: brightness(1.1); transform: translateY(-2px); }
         .col-monitor { width: 30%; }
@@ -49,14 +52,16 @@
         .caja-cambio { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 5px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 8px; font-family: 'Montserrat';}
         .caja-cambio input { width: 70px; text-align: right; border: 1px solid #aaa; border-radius: 3px; padding: 4px; font-weight: bold; outline: none; }
         .total-display { font-size: 22px; font-weight: 700; text-align: right; }
-        .acciones-pedido { background: var(--bg-panel); border: 1px solid #30363d; border-radius: 8px; padding: 12px; display: flex; gap: 10px; }
-        .btn-action { flex: 1; padding: 12px; border: none; border-radius: 6px; font-weight: 700; font-size: 12px; text-transform: uppercase; cursor: pointer; transition: 0.2s; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;}
+        .acciones-pedido { background: var(--bg-panel); border: 1px solid #30363d; border-radius: 8px; padding: 12px; display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn-action { flex: 1; padding: 12px; border: none; border-radius: 6px; font-weight: 700; font-size: 12px; text-transform: uppercase; cursor: pointer; transition: 0.2s; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-width: 80px;}
         .btn-action:disabled { background: #21262d !important; color: #484f58 !important; cursor: not-allowed; border: 1px solid #30363d; }
         .btn-action:not(:disabled):hover { filter: brightness(1.1); transform: scale(1.02); }
         .btn-print { background: var(--info); }
         .btn-dispatch { background: var(--warning); color: #000; }
         .btn-pay { background: var(--success); }
         .btn-reopen { background: #6f42c1; }
+        .btn-add { background: #007bff; } 
+        
         .panel-repartidor { background: #161b22; border: 1px solid var(--accent); border-radius: 8px; padding: 12px; display: flex; align-items: center; gap: 15px; box-shadow: 0 -5px 15px rgba(0,0,0,0.2); }
         .rep-info { flex: 1; display: flex; flex-direction: column; gap: 5px; }
         .rep-info label { font-size: 10px; color: var(--accent); font-weight: 700; letter-spacing: 1px; }
@@ -90,10 +95,22 @@
         <div class="panel col-captura">
             <div class="panel-header">📝 Datos del Cliente</div>
             <div class="panel-body">
-                <div class="input-group"><label>Teléfono *</label><input type="tel" id="cliTelefono" placeholder="10 dígitos" maxlength="10"></div>
-                <div class="input-group"><label>Nombre</label><input type="text" id="cliNombre" placeholder="Público en general"></div>
-                <div class="input-group"><label>Domicilio</label><input type="text" id="cliDomicilio" placeholder="Calle y número"></div>
-                <div class="input-group"><label>Colonia / Ref</label><input type="text" id="cliColonia" placeholder="Referencia"></div>
+                <div class="input-group">
+                    <label>Teléfono (10 dígitos) *</label>
+                    <input type="text" id="cliTelefono" placeholder="Ej. 3312345678" maxlength="10">
+                </div>
+                <div class="input-group">
+                    <label>Nombre</label>
+                    <input type="text" id="cliNombre" placeholder="Público en general" maxlength="60">
+                </div>
+                <div class="input-group">
+                    <label>Domicilio</label>
+                    <input type="text" id="cliDomicilio" placeholder="Calle y número" maxlength="100">
+                </div>
+                <div class="input-group">
+                    <label>Colonia / Ref</label>
+                    <input type="text" id="cliColonia" placeholder="Referencia" maxlength="100">
+                </div>
                 <button class="btn-main" onclick="abrirMenuParaLlevar()">Capturar Orden ➡</button>
             </div>
         </div>
@@ -127,6 +144,9 @@
             </div>
 
             <div class="acciones-pedido">
+                <button class="btn-action btn-add" id="btnAgregarItems" disabled style="display: none;" onclick="agregarMasPlatillos()">
+                    <span style="font-size: 18px;">➕</span> Agregar
+                </button>
                 <button class="btn-action btn-print" id="btnImprimirLlevar" disabled onclick="imprimirTicketDomicilio()">
                     <span style="font-size: 18px;">🖨️</span> Imprimir
                 </button>
@@ -188,23 +208,67 @@
         let totalActualLlevar = 0;   
         let descuentoAplicado = 0; 
         let ivaAplicado = false;
-        
         let foliosParaCobrar = [];
         let llavesParaBorrarCorte = [];
 
         document.addEventListener("DOMContentLoaded", () => {
             cargarRepartidores();
             cargarMonitorPedidos();
+            configurarSeguridadInputs(); 
         });
 
-        // 1. CAPTURA DE ORDEN
-        async function abrirMenuParaLlevar() {
-            let tel = document.getElementById('cliTelefono').value.trim();
-            let nom = document.getElementById('cliNombre').value.trim();
-            let dom = document.getElementById('cliDomicilio').value.trim();
-            let col = document.getElementById('cliColonia').value.trim();
+        function configurarSeguridadInputs() {
+            const inputTel = document.getElementById('cliTelefono');
+            const soloNumeros = function(e) {
+                if (['Backspace', 'ArrowLeft', 'ArrowRight', 'Tab', 'Delete'].includes(e.key)) return;
+                if (!/^[0-9]$/.test(e.key)) e.preventDefault();
+            };
+            const prevenirPegado = function(e) {
+                let pasteData = e.clipboardData.getData('text');
+                if (!/^\d+$/.test(pasteData)) e.preventDefault();
+            };
+            inputTel.addEventListener('keydown', soloNumeros);
+            inputTel.addEventListener('paste', prevenirPegado);
+        }
 
-            if(tel === "") return alert("El teléfono es obligatorio.");
+        async function abrirMenuParaLlevar() {
+            let inputTel = document.getElementById('cliTelefono');
+            let inputNom = document.getElementById('cliNombre');
+            let inputDom = document.getElementById('cliDomicilio');
+            let inputCol = document.getElementById('cliColonia');
+
+            [inputTel, inputNom, inputDom, inputCol].forEach(i => i.classList.remove('error'));
+
+            let tel = inputTel.value.trim();
+            let nom = inputNom.value.trim();
+            let dom = inputDom.value.trim();
+            let col = inputCol.value.trim();
+
+            if (tel.length !== 10) {
+                inputTel.classList.add('error');
+                alert("⛔ ERROR: El teléfono es obligatorio y debe tener exactamente 10 dígitos.");
+                inputTel.focus();
+                return;
+            }
+
+            const regexNombre = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/;
+            if (!regexNombre.test(nom)) {
+                inputNom.classList.add('error');
+                alert("⛔ ERROR: El nombre solo debe contener letras y espacios.");
+                inputNom.focus();
+                return;
+            }
+
+            const regexDir = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s.,#\-]*$/;
+            if (!regexDir.test(dom) || !regexDir.test(col)) {
+                if(!regexDir.test(dom)) inputDom.classList.add('error');
+                if(!regexDir.test(col)) inputCol.classList.add('error');
+                alert("⛔ ERROR: La dirección contiene caracteres prohibidos.");
+                return;
+            }
+
+            if (nom === "") nom = "Público general";
+
             let formData = new FormData();
             formData.append('telefono', tel);
             formData.append('nombre', nom);
@@ -216,7 +280,7 @@
                 let data = await resp.json();
 
                 if(data.status === 'success') {
-                    let nombreMesa = data.identificador; // Siempre será "FOLIO-XX" y jamás FOLIO-0
+                    let nombreMesa = data.identificador; 
                     let datosCliente = { folio: data.folio, orden: data.orden, telefono: tel, nombre: nom, domicilio: dom, colonia: col, tipo: 'delivery' };
                     
                     localStorage.setItem('info_' + nombreMesa, JSON.stringify(datosCliente));
@@ -233,7 +297,6 @@
             }
         }
 
-        // 2. MONITOR ACTIVO
         function cargarMonitorPedidos() {
             const panel = document.getElementById('listaPedidosLlevar');
             panel.innerHTML = '';
@@ -241,8 +304,6 @@
 
             for (let i = 0; i < localStorage.length; i++) {
                 let key = localStorage.key(i);
-                
-                // Leemos por la 'info_' que se crea inmediatamente al darle Capturar Orden
                 if (key.startsWith('info_FOLIO-')) {
                     hayPedidos = true;
                     let nombreMesa = key.replace('info_', ''); 
@@ -307,7 +368,6 @@
             stats.innerHTML = `Viajes en ruta asignados: <b style="color:var(--warning)">${viajes}</b>`;
         }
 
-        // 3. DETALLE Y LÓGICA
         function verDetalle(nombreMesa, cuenta, infoCliente, total, estado) {
             pedidoSeleccionado = nombreMesa;
             cuentaActualLlevar = cuenta;
@@ -323,13 +383,15 @@
             let tarjetaActiva = document.getElementById(`card-${nombreMesa}`);
             if(tarjetaActiva) tarjetaActiva.classList.add('active');
 
-            document.getElementById('detalleTitulo').innerText = `Folio: ${infoCliente.folio || 'N/A'}`;
+            document.getElementById('detalleTitulo').innerText = `Folio BD: ${infoCliente.folio || 'N/A'}`;
             document.getElementById('detalleInfo').innerHTML = `<b>Cliente:</b> ${infoCliente.nombre || 'Gral'}<br><b>Dir:</b> ${infoCliente.domicilio || '-'}<br><b>Col:</b> ${infoCliente.colonia || '-'}`;
             
             let htmlItems = "";
+            let estaImpreso = localStorage.getItem('impreso_' + pedidoSeleccionado) === 'true';
+
             if(Array.isArray(cuenta) && cuenta.length > 0) {
                 cuenta.forEach((i, index) => { 
-                    let btnX = (estado === 'preparando') ? `<button class="btn-del" title="Cancelar" onclick="cancelarPlatillo(${index})">X</button>` : '';
+                    let btnX = (estado === 'preparando') ? `<button class="btn-del" title="Eliminar" onclick="cancelarPlatillo(${index})">X</button>` : '';
                     htmlItems += `<div class="item-row"><span>${i.cantidad}x ${i.nombre} ${btnX}</span><span>$${i.subtotal.toFixed(2)}</span></div>`; 
                 });
             } else {
@@ -345,6 +407,7 @@
             let btnCamino = document.getElementById('btnCamino');
             let btnCobro = document.getElementById('btnCobro');
             let btnReabrir = document.getElementById('btnReabrir');
+            let btnAgregarItems = document.getElementById('btnAgregarItems'); 
             let btnDesc = document.getElementById('btnDesc');
             let btnIva = document.getElementById('btnIva');
             let divCambio = document.getElementById('cajaCambioDiv');
@@ -353,15 +416,90 @@
 
             if (estado === 'preparando') {
                 btnCamino.style.display = 'flex'; btnCamino.disabled = false;
-                btnCobro.style.display = 'none'; btnReabrir.style.display = 'none';
+                btnAgregarItems.style.display = 'flex'; btnAgregarItems.disabled = false; 
+                btnCobro.style.display = 'none'; 
                 btnDesc.disabled = false; btnIva.disabled = false;
                 divCambio.style.opacity = '1'; divCambio.style.pointerEvents = 'auto';
+
+                // Si está impreso, mostramos el botón de Reabrir para desbloquear
+                if (estaImpreso) {
+                    btnReabrir.style.display = 'flex'; btnReabrir.disabled = false;
+                } else {
+                    btnReabrir.style.display = 'none';
+                }
+
             } else if (estado === 'en-camino') {
                 btnCamino.style.display = 'none';
+                btnAgregarItems.style.display = 'none'; 
                 btnCobro.style.display = 'flex'; btnCobro.disabled = false;
                 btnReabrir.style.display = 'flex'; btnReabrir.disabled = false;
                 btnDesc.disabled = true; btnIva.disabled = true;
                 divCambio.style.opacity = '0.5'; divCambio.style.pointerEvents = 'none';
+            }
+        }
+
+        function agregarMasPlatillos() {
+            if (!pedidoSeleccionado) return;
+            
+            if (localStorage.getItem('impreso_' + pedidoSeleccionado) === 'true') {
+                let continuar = confirm("⚠️ ATENCIÓN: Este ticket ya fue impreso.\n\nSi agregas más platillos, el papel físico ya no coincidirá y la impresión actual quedará anulada.\n\n¿Deseas continuar?");
+                if (continuar) {
+                    localStorage.removeItem('impreso_' + pedidoSeleccionado);
+                } else {
+                    return; 
+                }
+            }
+            
+            localStorage.setItem('mesaActiva', JSON.stringify({ 
+                nombre: pedidoSeleccionado, 
+                num_orden: infoClienteActual.orden, 
+                estado: 'ocupada', 
+                tipo: 'delivery' 
+            }));
+            
+            window.location.href = '../Comedor/PuntoVenta.html';
+        }
+
+        function reabrirPedido() {
+            let estado = localStorage.getItem('estado_' + pedidoSeleccionado);
+            let mensaje = "";
+
+            if (estado === 'en-camino') {
+                mensaje = "¿Reabrir este pedido? Se le quitará al repartidor, se anulará el ticket físico y podrás agregar más platillos.";
+            } else {
+                mensaje = "¿Desbloquear la cuenta?\n\nAl reabrirla se anulará el ticket físico que ya habías impreso para que puedas modificar el pedido libremente.";
+            }
+
+            if(confirm(mensaje)) {
+                localStorage.setItem('estado_' + pedidoSeleccionado, 'preparando');
+                localStorage.removeItem('repartidor_' + pedidoSeleccionado);
+                localStorage.removeItem('impreso_' + pedidoSeleccionado);
+                cargarMonitorPedidos();
+                verDetalle(pedidoSeleccionado, cuentaActualLlevar, infoClienteActual, totalActualLlevar, 'preparando');
+            }
+        }
+
+        function cancelarPlatillo(index) {
+            let estaImpreso = localStorage.getItem('impreso_' + pedidoSeleccionado) === 'true';
+            let mensaje = estaImpreso 
+                ? "⚠️ ATENCIÓN: Este ticket ya fue impreso.\n\nSi eliminas el platillo, el papel físico estará mal y la impresión se anulará en el sistema.\n\n¿Eliminar de todas formas?"
+                : "¿Eliminar este platillo? Si ya enviaste esto a cocina, avísales.";
+
+            if(confirm(mensaje)) {
+                cuentaActualLlevar.splice(index, 1);
+                localStorage.removeItem('impreso_' + pedidoSeleccionado);
+
+                if(cuentaActualLlevar.length === 0) {
+                    localStorage.removeItem('cuenta_' + pedidoSeleccionado);
+                    localStorage.removeItem('info_' + pedidoSeleccionado);
+                    localStorage.removeItem('estado_' + pedidoSeleccionado);
+                    alert("Pedido vacío. Cancelado exitosamente en pantalla.");
+                    location.reload();
+                } else {
+                    localStorage.setItem('cuenta_' + pedidoSeleccionado, JSON.stringify(cuentaActualLlevar));
+                    verDetalle(pedidoSeleccionado, cuentaActualLlevar, infoClienteActual, 0, 'preparando');
+                    cargarMonitorPedidos();
+                }
             }
         }
 
@@ -409,35 +547,6 @@
         }
         function aplicarIVA() { ivaAplicado = !ivaAplicado; actualizarTotalVista(); }
         function cerrarModal(id) { document.getElementById(id).style.display = 'none'; }
-
-        function cancelarPlatillo(index) {
-            if(confirm("¿Eliminar este platillo? Se anulará el ticket impreso.")) {
-                cuentaActualLlevar.splice(index, 1);
-                localStorage.removeItem('impreso_' + pedidoSeleccionado);
-
-                if(cuentaActualLlevar.length === 0) {
-                    localStorage.removeItem('cuenta_' + pedidoSeleccionado);
-                    localStorage.removeItem('info_' + pedidoSeleccionado);
-                    localStorage.removeItem('estado_' + pedidoSeleccionado);
-                    alert("Pedido vacío. Cancelado exitosamente.");
-                    location.reload();
-                } else {
-                    localStorage.setItem('cuenta_' + pedidoSeleccionado, JSON.stringify(cuentaActualLlevar));
-                    verDetalle(pedidoSeleccionado, cuentaActualLlevar, infoClienteActual, 0, 'preparando');
-                    cargarMonitorPedidos();
-                }
-            }
-        }
-
-        function reabrirPedido() {
-            if(confirm("¿Reabrir este pedido? Se le quitará al repartidor.")) {
-                localStorage.setItem('estado_' + pedidoSeleccionado, 'preparando');
-                localStorage.removeItem('repartidor_' + pedidoSeleccionado);
-                localStorage.removeItem('impreso_' + pedidoSeleccionado);
-                cargarMonitorPedidos();
-                verDetalle(pedidoSeleccionado, cuentaActualLlevar, infoClienteActual, totalActualLlevar, 'preparando');
-            }
-        }
 
         function imprimirTicketDomicilio() {
             if(!pedidoSeleccionado) return;
@@ -498,7 +607,9 @@
 
             let win = window.open('', '_blank', 'width=400,height=600');
             win.document.write(formatoTicket); win.document.close(); win.focus();
-            setTimeout(() => { win.print(); win.close(); }, 500);
+            setTimeout(() => { win.print(); win.close(); 
+                verDetalle(pedidoSeleccionado, cuentaActualLlevar, infoClienteActual, totalActualLlevar, 'preparando');
+            }, 500);
         }
 
         function marcarEnCamino() {
@@ -522,7 +633,6 @@
             verDetalle(pedidoSeleccionado, cuentaActualLlevar, infoClienteActual, totalActualLlevar, 'en-camino');
         }
 
-        // --- MAGIA DE COBRO REAL EN PHP ---
         async function liquidarRepartidor() {
             if(confirm(`¿Liquidar cobro individual del pedido #${infoClienteActual.orden}?`)) {
                 try {
@@ -587,14 +697,12 @@
 
         async function ejecutarCorteDefinitivo() {
             try {
-                // Cobramos en la base de datos uno por uno
                 for (let f of foliosParaCobrar) {
                     let formData = new FormData();
                     formData.append('folio', f);
                     await fetch('cobrar_cuenta.php', { method: 'POST', body: formData });
                 }
                 
-                // Si todo sale bien, limpiamos la memoria
                 llavesParaBorrarCorte.forEach(k => localStorage.removeItem(k));
                 cerrarModal('modalCorte'); 
                 location.reload(); 
@@ -602,6 +710,23 @@
                 alert("Error al procesar el cobro en la base de datos.");
             }
         }
+
+        // --- ESCUCHA DE PESTAÑAS (Sincronización Local Mágica) ---
+window.addEventListener('storage', function(evento) {
+    // Si el evento detecta que OTRA pestaña borró o modificó la cuenta de una mesa...
+    if (evento.key && (evento.key.startsWith('estado_') || evento.key.startsWith('cuenta_') || evento.key.startsWith('info_'))) {
+        console.log("Sincronizando: Otra pestaña modificó las mesas.");
+        
+        // Si tienes una función específica para recargar el monitor (como cargarMonitorPedidos), 
+        // ponla aquí. Si no, la forma más ruda y segura es recargar la página entera:
+        location.reload(); 
+    }
+    
+    // Si la caja liquidó el turno completo (borró muchas cosas a la vez), el evento key llega nulo
+    if (evento.key === null) {
+        location.reload();
+    }
+});
     </script>
 </body>
 </html>
