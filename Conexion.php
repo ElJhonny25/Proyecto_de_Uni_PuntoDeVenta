@@ -1,5 +1,5 @@
 <?php
-// Conexion/Conexion.php
+require_once '../Conexion.php';
 
 // CORRECCIÓN: Doble barra invertida para que PHP lo lea bien
 $serverName = "PICAS\\SQLEXPRESS"; 

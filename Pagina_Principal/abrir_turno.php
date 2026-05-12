@@ -36,7 +36,11 @@ try {
         if (!$turnoGral) {
             // El Jefe abre el restaurante
             $conn->exec("INSERT INTO TURNO_GENERAL (ESTADO, FECHA_APERTURA) VALUES ('Abierto', GETDATE())");
-            $idTurnoGral = $conn->lastInsertId(); // Tomamos el ID que se acaba de crear
+            
+            // LA SOLUCIÓN PARA SQL SERVER: Buscar el último turno creado en lugar de lastInsertId()
+            $stmtId = $conn->query("SELECT MAX(ID_TURNO) FROM TURNO_GENERAL");
+            $idTurnoGral = $stmtId->fetchColumn(); 
+            
         } else {
             $idTurnoGral = $turnoGral['ID_TURNO'];
         }

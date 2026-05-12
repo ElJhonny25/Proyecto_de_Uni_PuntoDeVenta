@@ -2,100 +2,252 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Corte de Caja - SOFTWADZ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: sans-serif; background: #1a1e24; color: white; margin: 0; padding: 20px; }
-        .resumen-card { background: #2c3e50; padding: 20px; border-radius: 10px; width: 400px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        h2 { text-align: center; color: #ff7f2a; border-bottom: 1px solid #555; padding-bottom: 10px; }
-        .dato-row { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 18px; }
-        .gran-total { font-size: 24px; font-weight: bold; color: #28a745; margin-top: 20px; border-top: 2px dashed #555; padding-top: 15px; }
-        .btn-cerrar { width: 100%; padding: 15px; background: #dc3545; color: white; border: none; border-radius: 5px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 20px; }
-        .btn-cerrar:hover { background: #c82333; }
+        :root { --bg-dark: #12151a; --bg-panel: #1e232b; --text-main: #ffffff; --text-muted: #8b949e; --accent: #ff7f2a; --danger: #dc3545; --success: #28a745; --info: #17a2b8; }
+        body { margin: 0; font-family: 'Montserrat', sans-serif; color: var(--text-main); background-color: var(--bg-dark); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        /* BARRA SUPERIOR Y BOTÓN DE REGRESO */
+        .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 15px 25px; background: #0d1117; border-bottom: 2px solid var(--accent); z-index: 10; }
+        .titulo-modulo { font-size: 22px; font-weight: 700; letter-spacing: 1px; }
+        .titulo-modulo span { color: var(--accent); }
+        .btn-volver { background: transparent; color: white; border: 1px solid #555; padding: 10px 20px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-weight: 600; }
+        .btn-volver:hover { background: var(--danger); border-color: var(--danger); }
+
+        /* PESTAÑAS (TABS) */
+        .tab-container { display: flex; background: #161b22; padding: 0 25px; border-bottom: 1px solid #30363d; }
+        .tab { padding: 15px 25px; cursor: pointer; font-weight: 600; color: var(--text-muted); border-bottom: 3px solid transparent; transition: 0.3s; }
+        .tab:hover { color: white; }
+        .tab.active { color: var(--accent); border-bottom-color: var(--accent); background: var(--bg-panel); }
+
+        /* CONTENEDOR PRINCIPAL */
+        .layout-content { flex: 1; padding: 25px; overflow-y: auto; background: radial-gradient(circle at top, #1a1e24 0%, #12151a 100%); }
+        .panel-section { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .panel-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* TARJETAS DE RESUMEN (CORTE ACTUAL) */
+        .grid-resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .card-stat { background: var(--bg-panel); border: 1px solid #30363d; border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .card-stat h4 { margin: 0 0 10px 0; color: var(--text-muted); font-size: 13px; text-transform: uppercase; }
+        .card-stat .valor { font-size: 32px; font-weight: 700; color: white; }
+        .card-stat.total .valor { color: var(--success); }
+        .card-stat.gastos .valor { color: var(--danger); }
+
+        /* TABLA HISTORIAL */
+        .filtros { display: flex; gap: 15px; margin-bottom: 20px; background: var(--bg-panel); padding: 15px; border-radius: 8px; border: 1px solid #30363d; align-items: center;}
+        .filtros input[type="date"] { background: #0d1117; color: white; border: 1px solid #555; padding: 10px; border-radius: 5px; outline: none; font-family: inherit;}
+        .btn-buscar { background: var(--info); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        
+        table { width: 100%; border-collapse: collapse; background: var(--bg-panel); border-radius: 12px; overflow: hidden; border: 1px solid #30363d; }
+        th { background: #0d1117; padding: 15px; text-align: left; color: var(--accent); font-size: 13px; text-transform: uppercase; border-bottom: 1px solid #30363d; }
+        td { padding: 15px; border-bottom: 1px solid #30363d; font-size: 14px; }
+        tr:hover { background: #161b22; }
+        .btn-ver-tickets { background: transparent; color: var(--info); border: 1px solid var(--info); padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; transition: 0.2s;}
+        .btn-ver-tickets:hover { background: var(--info); color: white; }
+
+        /* MODAL DE TICKETS */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-box { background: var(--bg-panel); border: 1px solid var(--accent); border-radius: 12px; padding: 25px; width: 600px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.7); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; padding-bottom: 15px; margin-bottom: 15px; }
+        .modal-header h2 { margin: 0; color: white; font-size: 18px;}
+        .btn-cerrar-modal { background: var(--danger); color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .modal-body { overflow-y: auto; flex: 1; }
+        
+        /* DISEÑO DE MINI-TICKET EN EL MODAL */
+        .lista-tickets { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .mini-ticket { background: #f4f4f4; color: #000; padding: 15px; border-radius: 6px; border-left: 5px solid var(--accent); font-family: 'Courier New', monospace; font-size: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);}
+        .mini-ticket-header { border-bottom: 1px dashed #ccc; padding-bottom: 5px; margin-bottom: 5px; font-weight: bold; }
+        .mini-ticket-total { text-align: right; font-weight: bold; font-size: 14px; margin-top: 10px; border-top: 1px dashed #ccc; padding-top: 5px; color: #d32f2f;}
     </style>
 </head>
 <body>
 
-    <div class="resumen-card">
-        <h2>Resumen del Turno</h2>
+    <div class="top-bar">
+        <div class="titulo-modulo">📊 <span>SOFTWADZ</span> | Módulo de Finanzas</div>
+        <button class="btn-volver" onclick="window.location.href='AdminDashboard.html'">⬅ Volver al Dashboard</button>
+    </div>
+
+    <div class="tab-container">
+        <div class="tab active" onclick="cambiarPestana('tab-actual', this)">Corte del Día (En Vivo)</div>
+        <div class="tab" onclick="cambiarPestana('tab-historial', this)">📅 Historial y Búsqueda</div>
+    </div>
+
+    <div class="layout-content">
         
-        <div class="dato-row">
-            <span>Fecha de Apertura:</span>
-            <strong id="lblApertura">--</strong>
-        </div>
-        
-        <div class="dato-row">
-            <span>Fondo Inicial:</span>
-            <strong id="lblFondo">$0.00</strong>
-        </div>
-        
-        <div class="dato-row">
-            <span>Ventas Totales:</span>
-            <strong id="lblVentas">$0.00</strong>
-        </div>
-        
-        <div class="dato-row">
-            <span>Tickets Pagados:</span>
-            <strong id="lblTickets">0</strong>
+        <div id="tab-actual" class="panel-section active">
+            <h2 style="margin-top:0;">Resumen del Turno Activo</h2>
+            
+            <div class="grid-resumen">
+                <div class="card-stat total">
+                    <h4>Venta Total</h4>
+                    <div class="valor" id="txtTotalHoy">$0.00</div>
+                </div>
+                <div class="card-stat">
+                    <h4>Tickets Cobrados</h4>
+                    <div class="valor" id="txtTicketsHoy">0</div>
+                </div>
+                <div class="card-stat">
+                    <h4>Venta Comedor</h4>
+                    <div class="valor" id="txtComedorHoy">$0.00</div>
+                </div>
+                <div class="card-stat">
+                    <h4>Venta Domicilio</h4>
+                    <div class="valor" id="txtDomiHoy">$0.00</div>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 40px; padding: 20px; background: rgba(220, 53, 69, 0.1); border: 1px dashed var(--danger); border-radius: 12px;">
+                <h3 style="color: var(--danger); margin-top:0;">🛑 ZONA CRÍTICA</h3>
+                <p style="color: var(--text-muted); font-size: 14px; max-width: 600px; margin: 0 auto 20px auto;">
+                    Al ejecutar el cierre de caja, el sistema bloqueará el turno actual, cerrará la sesión de todos los empleados y generará el reporte final en la base de datos.
+                </p>
+                <button onclick="ejecutarCierreGeneral()" style="background: var(--danger); color: white; border: none; padding: 15px 30px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; text-transform: uppercase; box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);">
+                    Ejecutar Cierre y Terminar Día
+                </button>
+            </div>
         </div>
 
-        <div class="dato-row gran-total">
-            <span>Total en Caja Físico:</span>
-            <span id="lblTotalCaja">$0.00</span>
+        <div id="tab-historial" class="panel-section">
+            <h2 style="margin-top:0;">Registro de Cortes Anteriores</h2>
+            
+            <div class="filtros">
+                <span style="font-size: 14px; font-weight: bold;">Filtrar por fecha:</span>
+                <input type="date" id="fechaBusqueda">
+                <button class="btn-buscar" onclick="buscarHistorial()">🔍 Buscar</button>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Turno #</th>
+                        <th>Fecha de Apertura</th>
+                        <th>Fecha de Cierre</th>
+                        <th>Venta Total</th>
+                        <th>Estado</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaHistorial">
+                    <tr>
+                        <td><b>22</b></td>
+                        <td>10-May-2026 08:00 AM</td>
+                        <td>10-May-2026 11:30 PM</td>
+                        <td style="color: var(--success); font-weight:bold;">$4,580.00</td>
+                        <td>Cerrado</td>
+                        <td><button class="btn-ver-tickets" onclick="abrirVisorTickets(22)">Ver Tickets</button></td>
+                    </tr>
+                    <tr>
+                        <td><b>21</b></td>
+                        <td>09-May-2026 09:15 AM</td>
+                        <td>09-May-2026 10:45 PM</td>
+                        <td style="color: var(--success); font-weight:bold;">$3,200.50</td>
+                        <td>Cerrado</td>
+                        <td><button class="btn-ver-tickets" onclick="abrirVisorTickets(21)">Ver Tickets</button></td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
 
-        <button class="btn-cerrar" onclick="confirmarCorte()">Realizar Corte de Caja</button>
+    </div>
+
+    <div class="modal-overlay" id="modalTickets">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2 id="tituloModalTickets">Tickets del Turno #</h2>
+                <button class="btn-cerrar-modal" onclick="cerrarModal()">X</button>
+            </div>
+            <div class="modal-body">
+                <div class="lista-tickets" id="contenedorTickets">
+                    <div class="mini-ticket">
+                        <div class="mini-ticket-header">Folio: TKT-1001 <br> <span style="font-weight:normal; font-size:10px;">Comedor - Mesa 05</span></div>
+                        <div>2x Tacos Asada</div>
+                        <div>1x Coca Cola</div>
+                        <div class="mini-ticket-total">Total: $150.00</div>
+                    </div>
+                    <div class="mini-ticket">
+                        <div class="mini-ticket-header">Folio: TKT-1002 <br> <span style="font-weight:normal; font-size:10px;">Para Llevar</span></div>
+                        <div>1x Sushi Empanizado</div>
+                        <div class="mini-ticket-total">Total: $120.00</div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
-        let turnoId = null;
-        let totalCerrar = 0;
+        // Lógica de pestañas
+        function cambiarPestana(idSeccion, elementoTab) {
+            document.querySelectorAll('.panel-section').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(idSeccion).classList.add('active');
+            elementoTab.classList.add('active');
+        }
 
-        document.addEventListener('DOMContentLoaded', async () => {
+        // Lógica de Modal
+        function abrirVisorTickets(idTurno) {
+            document.getElementById('tituloModalTickets').innerText = "Tickets del Turno #" + idTurno;
+            document.getElementById('modalTickets').style.display = 'flex';
+            
+            // AQUÍ METE TUS FUNCIONES FETCH PHP PARA LLENAR EL MODAL
+            // fetch(`obtener_tickets_turno.php?id=${idTurno}`) ...
+        }
+
+        function cerrarModal() {
+            document.getElementById('modalTickets').style.display = 'none';
+        }
+
+        // Botón Cierre de Caja
+        async function ejecutarCierreGeneral() {
+            if (!confirm("⚠️ ¿Estás seguro de que deseas CERRAR EL DÍA? Esta acción es irreversible.")) return;
+
+            try {
+                // AQUÍ USAMOS TU ARCHIVO BLINDADO
+                let req = await fetch('cerrar_turno_general.php'); 
+                let res = await req.json();
+
+                if (res.status === 'success') {
+                    alert(res.message);
+                    window.location.href = 'AdminDashboard.html'; // Lo sacamos del corte
+                } else {
+                    alert(res.message); // Si hay mesas abiertas, le avisará aquí
+                }
+            } catch (error) {
+                alert("Error de conexión al servidor.");
+            }
+        }
+
+        function buscarHistorial() {
+            let fecha = document.getElementById('fechaBusqueda').value;
+            if(!fecha) return alert("Selecciona una fecha primero.");
+            alert("Buscando cortes para la fecha: " + fecha + "\n(Requiere conexión PHP)");
+        }
+
+        // --- FUNCIÓN PARA CARGAR EL DINERO EN VIVO ---
+        async function cargarResumenDia() {
             try {
                 let req = await fetch('obtener_resumen_corte.php');
                 let res = await req.json();
 
                 if (res.status === 'success') {
-                    turnoId = res.turno;
-                    totalCerrar = res.totalEnCaja;
-
-                    document.getElementById('lblApertura').innerText = new Date(res.fechaApertura).toLocaleString();
-                    document.getElementById('lblFondo').innerText = "$" + parseFloat(res.fondoInicial).toFixed(2);
-                    document.getElementById('lblVentas').innerText = "$" + parseFloat(res.totalVentas).toFixed(2);
-                    document.getElementById('lblTickets').innerText = res.numTickets;
-                    document.getElementById('lblTotalCaja').innerText = "$" + parseFloat(res.totalEnCaja).toFixed(2);
-                } else {
-                    alert(res.message);
+                    // Actualizamos los números en la pantalla
+                    document.getElementById('txtTotalHoy').innerText = '$' + res.total.toFixed(2);
+                    document.getElementById('txtTicketsHoy').innerText = res.tickets;
+                    document.getElementById('txtComedorHoy').innerText = '$' + res.comedor.toFixed(2);
+                    document.getElementById('txtDomiHoy').innerText = '$' + res.domicilio.toFixed(2);
                 }
-            } catch (e) {
-                console.error(e);
-            }
-        });
-
-        async function confirmarCorte() {
-            if (!turnoId) return alert("No hay información de turno válida.");
-
-            if (confirm("¿Está seguro de cerrar el turno actual con un total en caja de $" + totalCerrar.toFixed(2) + "?\n\nNo podrá deshacer esta acción ni cobrar más mesas hasta abrir un nuevo turno.")) {
-                
-                try {
-                    // Llamamos a nuestro nuevo archivo PHP
-                    let req = await fetch('cerrar_turno.php', { method: 'POST' });
-                    let res = await req.json();
-
-                    if(res.status === 'success') {
-                        alert("✅ " + res.message);
-                        
-                        // Redirigimos al Panel Administrador (Ajusta el nombre de tu archivo si es distinto)
-                        window.location.href = "AdminDashboard.html"; 
-                    } else {
-                        alert("Error de Base de Datos: " + res.message);
-                    }
-                } catch(e) {
-                    console.error(e);
-                    alert("Error de red al intentar comunicarse con el servidor.");
-                }
+            } catch (error) {
+                console.error("Error al cargar el resumen del corte:", error);
             }
         }
+
+        // --- HACER QUE SE CARGUE AUTOMÁTICAMENTE AL ENTRAR ---
+        document.addEventListener("DOMContentLoaded", function() {
+            cargarResumenDia(); // Carga los datos la primera vez
+            setInterval(cargarResumenDia, 5000); // Se actualiza solo cada 5 segundos
+        });
     </script>
 </body>
 </html>

@@ -114,21 +114,21 @@
         </div>
     </div>
 
+    <iframe id="marcoImpresora" style="display:none;"></iframe>
+
     <script>
         let mesaSeleccionada = null;
         let totalAPagar = 0;
         let estadoMesaSeleccionada = null;
         let itemsActuales = [];
         let folioActivo = null; 
-        let actualizandoMesas = false; // Candado para evitar choques de peticiones
+        let actualizandoMesas = false; 
 
         document.addEventListener("DOMContentLoaded", function() {
             cargarMesasPendientes();
-            // Ejecuta la función de recargar cada 3000 milisegundos (3 segundos)
             setInterval(cargarMesasPendientes, 1000); 
         });
 
-        // --- 1. CARGAR MESAS DESDE LA BASE DE DATOS (CON PROMISE.ALL) ---
         async function cargarMesasPendientes() {
             if (actualizandoMesas) return;
             actualizandoMesas = true;
@@ -147,7 +147,6 @@
                         return;
                     }
 
-                    // 1. Lanzamos TODAS las peticiones al mismo tiempo
                     let peticiones = mesasFiltradas.map(async (m) => {
                         try {
                             let cuentaReq = await fetch(`../Comedor/cargar_cuenta_mesa.php?mesa=${encodeURIComponent(m.nombre)}`);
@@ -158,10 +157,7 @@
                         }
                     });
 
-                    // 2. Esperamos a que TODAS respondan
                     let resultados = await Promise.all(peticiones);
-
-                    // 3. Armamos los botones en la memoria invisible
                     let fragmento = document.createDocumentFragment();
 
                     resultados.forEach(item => {
@@ -182,7 +178,6 @@
                         
                         btn.onclick = () => cargarDetalle(m.nombre, totalMesa, m.estado, cuentaRes.folio, cuentaRes.items);
                         
-                        // Mantener iluminada la mesa seleccionada
                         if (mesaSeleccionada === m.nombre) {
                             btn.classList.add('active');
                         }
@@ -190,18 +185,17 @@
                         fragmento.appendChild(btn);
                     });
 
-                    // 4. Solo aquí borramos e insertamos (adiós parpadeo y duplicados)
                     panel.innerHTML = '';
                     panel.appendChild(fragmento);
                 }
             } catch(e) { 
                 console.error("Error al cargar mesas", e); 
             } finally {
-                actualizandoMesas = false; // Soltamos el candado
+                actualizandoMesas = false; 
             }
         }
 
-        // --- 2. MOSTRAR DETALLE EN CAJA ---
+        // --- CARGAR PLATILLOS DE LA MESA SELECCIONADA ---
         function cargarDetalle(nombre, total, estado, folio, items) {
             mesaSeleccionada = nombre;
             totalAPagar = total;
@@ -221,14 +215,18 @@
             let html = "";
             if (itemsActuales.length > 0) {
                 itemsActuales.forEach(i => {
-                    html += `<div class="item-comanda"><span>${i.CANTIDAD}x ${i.NOMBRE}</span><span>$${parseFloat(i.SUBTOTAL).toFixed(2)}</span></div>`;
+                    // Protegido contra Mayúsculas y Minúsculas
+                    let cant = i.CANTIDAD || i.cantidad || 0;
+                    let nom = i.NOMBRE || i.nombre || 'Producto';
+                    let sub = i.SUBTOTAL || i.subtotal || 0;
+                    
+                    html += `<div class="item-comanda"><span>${cant}x ${nom}</span><span>$${parseFloat(sub).toFixed(2)}</span></div>`;
                 });
             } else {
                 html = '<div style="text-align:center; color:#888; margin-top:50px;">Sin detalles (Ocurrió un error al cargar).</div>';
             }
             document.getElementById('ticketItemsCaja').innerHTML = html;
 
-            // APLICAMOS LA RESTRICCIÓN DE NEGOCIO
             const isImpresa = (estado === 'sucia'); 
             
             document.getElementById('btnImprimir').disabled = false; 
@@ -270,18 +268,22 @@
             }
         }
 
-        // --- 3. IMPRIMIR PRECUENTA ---
+        // --- IMPRESIÓN DIRECTA CON IFRAME Y DESBLOQUEO INSTANTÁNEO ---
         function imprimirPrecuenta() {
             if(!mesaSeleccionada || itemsActuales.length === 0) return;
             
             let fecha = new Date().toLocaleString('es-MX');
             let htmlItems = "";
             itemsActuales.forEach(i => {
+                let cant = i.CANTIDAD || i.cantidad || 0;
+                let nom = String(i.NOMBRE || i.nombre || 'Producto');
+                let sub = parseFloat(i.SUBTOTAL || i.subtotal || 0).toFixed(2);
+                
                  htmlItems += `
                     <tr>
-                        <td style="text-align:left;">${i.CANTIDAD}</td>
-                        <td style="text-align:left;">${i.NOMBRE.substring(0,18)}</td>
-                        <td style="text-align:right;">$${parseFloat(i.SUBTOTAL).toFixed(2)}</td>
+                        <td style="text-align:left;">${cant}</td>
+                        <td style="text-align:left;">${nom.substring(0,18)}</td>
+                        <td style="text-align:right;">$${sub}</td>
                     </tr>`;
             });
 
@@ -310,7 +312,6 @@
                         th { border-bottom: 1px dashed #000; padding-bottom: 2px; text-align: left; }
                         td { padding: 2px 0; vertical-align: top; }
                         .total-area { font-size: 14px; margin-top: 8px; }
-                        
                         .desc-producto { width: 55%; word-wrap: break-word; }
                         .cant-col { width: 15%; }
                         .impte-col { width: 30%; text-align: right; }
@@ -333,31 +334,38 @@
                         <tbody>${htmlItems}</tbody>
                     </table>
                     <div class="dashed-line"></div>
-                    <div class="total-area bold" style="text-align: right;">TOTAL: $${totalAPagar.toFixed(2)}</div>
+                    <div class="total-area bold" style="text-align: right;">TOTAL: $${parseFloat(totalAPagar).toFixed(2)}</div>
                     <div class="dashed-line"></div>
                     <div class="center" style="font-size: 9px;">*** NO FISCAL ***<br>¡Gracias por su preferencia!</div>
                 </body>
                 </html>
             `;
             
-            let ventanaImpresion = window.open('', '_blank', 'width=400,height=600');
-            ventanaImpresion.document.write(formatoTicket);
-            ventanaImpresion.document.close();
-            ventanaImpresion.focus();
+            // Usamos el Iframe invisible para imprimir
+            let iframe = document.getElementById('marcoImpresora');
+            let doc = iframe.contentWindow.document;
+            doc.open();
+            doc.write(formatoTicket);
+            doc.close();
             
+            // Desbloqueo INSTANTÁNEO de la caja visualmente (sin esperar a SQL)
+            estadoMesaSeleccionada = 'sucia';
+            document.getElementById('alertaImpresion').style.display = 'none';
+            document.getElementById('inputRecibido').disabled = false;
+            document.querySelectorAll('.btn-billete').forEach(b => b.disabled = false);
+
+            // Mandamos a imprimir después de un parpadeo
             setTimeout(() => { 
-                ventanaImpresion.print(); 
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print(); 
                 
-                // --- CAMBIO DE ESTADO A SUCIA (AMARILLA) ---
+                // Actualizamos el estado para la próxima recarga
                 localStorage.setItem('comandoMesa', JSON.stringify({ nombre: mesaSeleccionada, estado: 'sucia' }));
-                
-                // Forzamos actualización visual rápida soltando el candado
                 actualizandoMesas = false; 
                 cargarMesasPendientes(); 
             }, 500);
         }
 
-        // --- 4. COBRAR Y LIBERAR EN BD ---
         async function procesarCobroFinal() {
             if(!mesaSeleccionada || estadoMesaSeleccionada !== 'sucia' || !folioActivo) return;
             
@@ -375,12 +383,10 @@
                 if(res.status === 'success') {
                     alert(`✅ COBRO PROCESADO\nMesa liquidada correctamente en el sistema.`);
                     
-                    // --- LIBERAR LA MESA VISUALMENTE ---
                     localStorage.removeItem('cuenta_' + mesaSeleccionada);
                     localStorage.setItem('estado_' + mesaSeleccionada, 'libre');
                     localStorage.setItem('comandoMesa', JSON.stringify({ nombre: mesaSeleccionada, estado: 'libre' }));
 
-                    // Reset de pantalla
                     mesaSeleccionada = null;
                     folioActivo = null;
                     document.getElementById('ticketMesaTitulo').innerText = "Seleccione una Mesa";
@@ -393,7 +399,6 @@
                     
                     limpiarEfectivo();
                     
-                    // Forzamos actualización visual rápida soltando el candado
                     actualizandoMesas = false;
                     cargarMesasPendientes(); 
                 } else {

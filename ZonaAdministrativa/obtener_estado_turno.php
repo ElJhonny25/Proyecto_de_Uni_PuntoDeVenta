@@ -3,7 +3,6 @@ session_start();
 require_once '../Conexion.php';
 
 try {
-    // Buscar el turno general abierto (con TRIM para evitar espacios)
     $sql = "SELECT TOP 1 ID_TURNO, FECHA_APERTURA, FONDO_CAJA 
             FROM TURNO_GENERAL 
             WHERE TRIM(ESTADO) = 'Abierto' 

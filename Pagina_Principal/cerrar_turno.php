@@ -5,76 +5,59 @@ $data = json_decode(file_get_contents('php://input'), true);
 $nip = $data['nip'] ?? '';
 
 try {
-    $esAdmin = false;
-    $idEmpleado = null;
-    $nombre = "Administrador";
-
-    if ($nip === "4375879703") { 
-        $esAdmin = true; 
-    } else {
-        $stmt = $conn->prepare("SELECT E.ID_EMPLEADO, E.NOMBRE, C.NOMBRE_CARGO 
+    // 1. Validar quién cierra
+    $stmtUser = $conn->prepare("SELECT E.ID_EMPLEADO, C.NOMBRE_CARGO 
                                 FROM EMPLEADO E 
                                 INNER JOIN CARGO C ON E.ID_CARGO = C.ID_CARGO 
                                 WHERE E.NIP = ?");
-        $stmt->execute([$nip]);
-        $empleado = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$empleado) throw new Exception("NIP incorrecto.");
+    $stmtUser->execute([$nip]);
+    $quienCierra = $stmtUser->fetch(PDO::FETCH_ASSOC);
+
+    // Si es admin o la llave maestra, puede cerrar el restaurante
+    if (($quienCierra && $quienCierra['NOMBRE_CARGO'] === 'Administrador') || $nip === "4375879703") {
         
-        $idEmpleado = $empleado['ID_EMPLEADO'];
-        $nombre = $empleado['NOMBRE'];
-        if ($empleado['NOMBRE_CARGO'] === 'Administrador') {
-            $esAdmin = true;
-        }
-    }
+        $idEmpleadoAdmin = $quienCierra ? $quienCierra['ID_EMPLEADO'] : 0;
 
-    $stmtGral = $conn->query("SELECT TOP 1 ID_TURNO FROM TURNO_GENERAL WHERE TRIM(ESTADO) = 'Abierto' ORDER BY ID_TURNO DESC");
-    $turnoGral = $stmtGral->fetch(PDO::FETCH_ASSOC);
-    if (!$turnoGral) throw new Exception("No hay ningún turno general abierto en el restaurante.");
-    $idTurnoGral = $turnoGral['ID_TURNO'];
-
-    if ($esAdmin) {
-        // --- 🛡️ CANDADO 1: MESAS SIN COBRAR (Usando TRIM por seguridad) ---
-        $stmtCuentas = $conn->prepare("SELECT COUNT(*) as Pendientes FROM CUENTA WHERE ID_TURNO = ? AND TRIM(ESTADO) IN ('Pendiente', 'en-camino')");
-        $stmtCuentas->execute([$idTurnoGral]);
-        $pendientes = (int)$stmtCuentas->fetch(PDO::FETCH_ASSOC)['Pendientes'];
-
-        if ($pendientes > 0) {
-            throw new Exception("🛑 BLOQUEO DE SEGURIDAD: Hay $pendientes cuentas sin cobrar.");
+        // --- 🛡️ CANDADO 1: ¿HAY CUENTAS ABIERTAS? ---
+        $stmtCuentas = $conn->query("SELECT COUNT(*) FROM CUENTA WHERE TRIM(ESTADO) IN ('Pendiente', 'en-camino')");
+        if ($stmtCuentas->fetchColumn() > 0) {
+            throw new Exception("🛑 ERROR: Hay mesas ocupadas o pedidos en ruta. Cóbralos todos antes de cerrar caja.");
         }
 
-        // --- 🛡️ CANDADO 2: EMPLEADOS ACTIVOS ---
-        // Excluimos al propio Administrador ($idEmpleado) de este conteo, para que él sí pueda cerrar.
-        $empIdParam = $idEmpleado ? $idEmpleado : 0; 
-        $stmtPersonal = $conn->prepare("SELECT COUNT(*) as Activos FROM TURNO_EMPLEADO WHERE ID_TURNO_GENERAL = ? AND TRIM(ESTADO) = 'Abierto' AND ID_EMPLEADO != ?");
-        $stmtPersonal->execute([$idTurnoGral, $empIdParam]);
-        $empleadosActivos = (int)$stmtPersonal->fetch(PDO::FETCH_ASSOC)['Activos'];
+        // --- 🛡️ CANDADO 2: ¿HAY EMPLEADOS ACTIVOS? ---
+        // Buscamos a CUALQUIERA que no sea el admin que está cerrando
+        $stmtPersonal = $conn->prepare("SELECT COUNT(*) FROM TURNO_EMPLEADO WHERE (TRIM(ESTADO) = 'Abierto' OR ESTADO = 'Abierto') AND ID_EMPLEADO != ?");
+        $stmtPersonal->execute([$idEmpleadoAdmin]);
+        $empleadosOlvidados = $stmtPersonal->fetchColumn();
 
-        if ($empleadosActivos > 0) {
-            throw new Exception("🛑 BLOQUEO: Hay $empleadosActivos empleados con turno abierto. Ciérrales su turno desde el Gestor primero.");
+        if ($empleadosOlvidados > 0) {
+            throw new Exception("🛑 BLOQUEO: Hay $empleadosOlvidados empleados con turno abierto. Cierra sus sesiones primero.");
         }
 
-        // Si todo está cuadrado, cerramos el turno personal del Admin y cerramos el Restaurante
-        if ($idEmpleado) {
-            $conn->exec("UPDATE TURNO_EMPLEADO SET ESTADO = 'Cerrado', HORA_FIN = GETDATE() WHERE ID_EMPLEADO = $idEmpleado AND TRIM(ESTADO) = 'Abierto'");
-        }
-        $stmtClose = $conn->prepare("UPDATE TURNO_GENERAL SET ESTADO = 'Cerrado', FECHA_CIERRE = GETDATE() WHERE ID_TURNO = ?");
-        $stmtClose->execute([$idTurnoGral]);
+        // --- TODO LIMPIO: PROCEDEMOS AL CIERRE ---
+        // Cerramos el turno del Admin
+        $conn->prepare("UPDATE TURNO_EMPLEADO SET ESTADO = 'Cerrado', HORA_FIN = GETDATE() WHERE ID_EMPLEADO = ? AND (TRIM(ESTADO) = 'Abierto' OR ESTADO = 'Abierto')")
+             ->execute([$idEmpleadoAdmin]);
 
-        echo json_encode(["status" => "success", "message" => "✅ Turno General CERRADO exitosamente.", "hora" => date('H:i:s')]);
+        // Cerramos el Turno General
+        $conn->exec("UPDATE TURNO_GENERAL SET ESTADO = 'Cerrado', FECHA_CIERRE = GETDATE() WHERE TRIM(ESTADO) = 'Abierto'");
+
+        echo json_encode(["status" => "success", "message" => "✅ CIERRE EXITOSO: Restaurante cerrado y personal liberado.", "hora" => date('H:i:s')]);
 
     } else {
-        // EMPLEADO NORMAL CIERRA SU TURNO
-        $stmtTurnoEmp = $conn->prepare("SELECT ID_TURNO_EMP FROM TURNO_EMPLEADO WHERE ID_EMPLEADO = ? AND TRIM(ESTADO) = 'Abierto'");
-        $stmtTurnoEmp->execute([$idEmpleado]);
-        $turnoEmp = $stmtTurnoEmp->fetch(PDO::FETCH_ASSOC);
+        // Lógica para mesero normal cerrando SU sesión
+        $stmtEmp = $conn->prepare("SELECT ID_TURNO_EMP FROM TURNO_EMPLEADO WHERE ID_EMPLEADO = ? AND (TRIM(ESTADO) = 'Abierto' OR ESTADO = 'Abierto')");
+        $stmtEmp->execute([$quienCierra['ID_EMPLEADO']]);
+        $turno = $stmtEmp->fetch();
 
-        if (!$turnoEmp) throw new Exception("No tienes un turno abierto para cerrar.");
+        if (!$turno) throw new Exception("No tienes una entrada registrada para este turno.");
 
-        $stmtCloseEmp = $conn->prepare("UPDATE TURNO_EMPLEADO SET ESTADO = 'Cerrado', HORA_FIN = GETDATE() WHERE ID_TURNO_EMP = ?");
-        $stmtCloseEmp->execute([$turnoEmp['ID_TURNO_EMP']]);
+        $conn->prepare("UPDATE TURNO_EMPLEADO SET ESTADO = 'Cerrado', HORA_FIN = GETDATE() WHERE ID_TURNO_EMP = ?")
+             ->execute([$turno['ID_TURNO_EMP']]);
 
-        echo json_encode(["status" => "success", "message" => "👤 Salida registrada para $nombre.", "hora" => date('H:i:s')]);
+        echo json_encode(["status" => "success", "message" => "Salida registrada. ¡Hasta mañana!", "hora" => date('H:i:s')]);
     }
+
 } catch (Exception $e) {
     echo json_encode(["status" => "error", "message" => $e->getMessage()]);
 }
