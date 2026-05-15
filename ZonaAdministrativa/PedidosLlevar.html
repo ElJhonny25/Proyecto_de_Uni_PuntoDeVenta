@@ -246,7 +246,7 @@
 
             if (tel.length !== 10) {
                 inputTel.classList.add('error');
-                alert("⛔ ERROR: El teléfono es obligatorio y debe tener exactamente 10 dígitos.");
+                await mostrarAlerta("⛔ ERROR: El teléfono es obligatorio y debe tener exactamente 10 dígitos.");
                 inputTel.focus();
                 return;
             }
@@ -254,7 +254,7 @@
             const regexNombre = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/;
             if (!regexNombre.test(nom)) {
                 inputNom.classList.add('error');
-                alert("⛔ ERROR: El nombre solo debe contener letras y espacios.");
+                await mostrarAlerta("⛔ ERROR: El nombre solo debe contener letras y espacios.");
                 inputNom.focus();
                 return;
             }
@@ -263,7 +263,7 @@
             if (!regexDir.test(dom) || !regexDir.test(col)) {
                 if(!regexDir.test(dom)) inputDom.classList.add('error');
                 if(!regexDir.test(col)) inputCol.classList.add('error');
-                alert("⛔ ERROR: La dirección contiene caracteres prohibidos.");
+                await mostrarAlerta("⛔ ERROR: La dirección contiene caracteres prohibidos.");
                 return;
             }
 
@@ -289,11 +289,11 @@
                     
                     window.location.href = '../Comedor/PuntoVenta.html';
                 } else {
-                    alert("Error PHP: " + data.message);
+                    await mostrarAlerta("Error PHP: " + data.message);
                 }
             } catch (e) {
                 console.error("Error al generar folio:", e);
-                alert("Error de conexión al servidor.");
+                await mostrarAlerta("Error de conexión al servidor.");
             }
         }
 
@@ -421,7 +421,6 @@
                 btnDesc.disabled = false; btnIva.disabled = false;
                 divCambio.style.opacity = '1'; divCambio.style.pointerEvents = 'auto';
 
-                // Si está impreso, mostramos el botón de Reabrir para desbloquear
                 if (estaImpreso) {
                     btnReabrir.style.display = 'flex'; btnReabrir.disabled = false;
                 } else {
@@ -438,11 +437,11 @@
             }
         }
 
-        function agregarMasPlatillos() {
+        async function agregarMasPlatillos() {
             if (!pedidoSeleccionado) return;
             
             if (localStorage.getItem('impreso_' + pedidoSeleccionado) === 'true') {
-                let continuar = confirm("⚠️ ATENCIÓN: Este ticket ya fue impreso.\n\nSi agregas más platillos, el papel físico ya no coincidirá y la impresión actual quedará anulada.\n\n¿Deseas continuar?");
+                const continuar = await mostrarConfirm("⚠️ ATENCIÓN: Este ticket ya fue impreso.\n\nSi agregas más platillos, el papel físico ya no coincidirá y la impresión actual quedará anulada.\n\n¿Deseas continuar?");
                 if (continuar) {
                     localStorage.removeItem('impreso_' + pedidoSeleccionado);
                 } else {
@@ -460,7 +459,7 @@
             window.location.href = '../Comedor/PuntoVenta.html';
         }
 
-        function reabrirPedido() {
+        async function reabrirPedido() {
             let estado = localStorage.getItem('estado_' + pedidoSeleccionado);
             let mensaje = "";
 
@@ -470,7 +469,8 @@
                 mensaje = "¿Desbloquear la cuenta?\n\nAl reabrirla se anulará el ticket físico que ya habías impreso para que puedas modificar el pedido libremente.";
             }
 
-            if(confirm(mensaje)) {
+            const confirmado = await mostrarConfirm(mensaje);
+            if(confirmado) {
                 localStorage.setItem('estado_' + pedidoSeleccionado, 'preparando');
                 localStorage.removeItem('repartidor_' + pedidoSeleccionado);
                 localStorage.removeItem('impreso_' + pedidoSeleccionado);
@@ -479,13 +479,14 @@
             }
         }
 
-        function cancelarPlatillo(index) {
+        async function cancelarPlatillo(index) {
             let estaImpreso = localStorage.getItem('impreso_' + pedidoSeleccionado) === 'true';
             let mensaje = estaImpreso 
                 ? "⚠️ ATENCIÓN: Este ticket ya fue impreso.\n\nSi eliminas el platillo, el papel físico estará mal y la impresión se anulará en el sistema.\n\n¿Eliminar de todas formas?"
                 : "¿Eliminar este platillo? Si ya enviaste esto a cocina, avísales.";
 
-            if(confirm(mensaje)) {
+            const confirmado = await mostrarConfirm(mensaje);
+            if(confirmado) {
                 cuentaActualLlevar.splice(index, 1);
                 localStorage.removeItem('impreso_' + pedidoSeleccionado);
 
@@ -493,7 +494,7 @@
                     localStorage.removeItem('cuenta_' + pedidoSeleccionado);
                     localStorage.removeItem('info_' + pedidoSeleccionado);
                     localStorage.removeItem('estado_' + pedidoSeleccionado);
-                    alert("Pedido vacío. Cancelado exitosamente en pantalla.");
+                    await mostrarAlerta("Pedido vacío. Cancelado exitosamente en pantalla.");
                     location.reload();
                 } else {
                     localStorage.setItem('cuenta_' + pedidoSeleccionado, JSON.stringify(cuentaActualLlevar));
@@ -612,18 +613,20 @@
             }, 500);
         }
 
-        function marcarEnCamino() {
+        async function marcarEnCamino() {
             if(localStorage.getItem('impreso_' + pedidoSeleccionado) !== 'true') {
                 let btn = document.getElementById('btnImprimirLlevar');
                 btn.style.boxShadow = "0 0 15px red"; setTimeout(() => btn.style.boxShadow = "none", 1500);
-                return alert("⚠️ ERROR: Debes imprimir el ticket antes de despachar.");
+                await mostrarAlerta("⚠️ ERROR: Debes imprimir el ticket antes de despachar.");
+                return;
             }
 
             let sel = document.getElementById('selectRepartidor');
             if(!sel.value) {
                 sel.style.borderColor = "red";
                 setTimeout(() => sel.style.borderColor = "#30363d", 1000);
-                return alert("Seleccione un repartidor en el panel inferior primero.");
+                await mostrarAlerta("Seleccione un repartidor en el panel inferior primero.");
+                return;
             }
             
             localStorage.setItem('estado_' + pedidoSeleccionado, 'en-camino');
@@ -634,7 +637,8 @@
         }
 
         async function liquidarRepartidor() {
-            if(confirm(`¿Liquidar cobro individual del pedido #${infoClienteActual.orden}?`)) {
+            const confirmado = await mostrarConfirm(`¿Liquidar cobro individual del pedido #${infoClienteActual.orden}?`);
+            if(confirmado) {
                 try {
                     let formData = new FormData();
                     formData.append('folio', infoClienteActual.folio);
@@ -650,19 +654,20 @@
                         localStorage.removeItem('impreso_' + pedidoSeleccionado);
                         location.reload();
                     } else {
-                        alert("Error en la Base de Datos: " + res.message);
+                        await mostrarAlerta("Error en la Base de Datos: " + res.message);
                     }
                 } catch(e) {
-                    alert("Error de conexión al procesar el cobro.");
+                    await mostrarAlerta("Error de conexión al procesar el cobro.");
                 }
             }
         }
 
-        function liquidarTodoTurno() {
+        async function liquidarTodoTurno() {
             let sel = document.getElementById('selectRepartidor');
             if(!sel.value) {
                 sel.style.borderColor = "red";
                 setTimeout(() => sel.style.borderColor = "#30363d", 1000);
+                await mostrarAlerta("Seleccione un repartidor en el panel inferior primero.");
                 return;
             }
 
@@ -688,7 +693,10 @@
                 }
             }
 
-            if(pedidosLiquidados === 0) return alert("Este repartidor no tiene viajes activos pendientes de cobro.");
+            if(pedidosLiquidados === 0) {
+                await mostrarAlerta("Este repartidor no tiene viajes activos pendientes de cobro.");
+                return;
+            }
 
             document.getElementById('textoCorte').innerHTML = `Se liquidarán <b>${pedidosLiquidados} pedidos</b> de <b>${sel.options[sel.selectedIndex].text}</b>.`;
             document.getElementById('totalCortePantalla').innerText = `$${totalCorte.toFixed(2)}`;
@@ -707,26 +715,22 @@
                 cerrarModal('modalCorte'); 
                 location.reload(); 
             } catch(e) {
-                alert("Error al procesar el cobro en la base de datos.");
+                await mostrarAlerta("Error al procesar el cobro en la base de datos.");
             }
         }
 
         // --- ESCUCHA DE PESTAÑAS (Sincronización Local Mágica) ---
-window.addEventListener('storage', function(evento) {
-    // Si el evento detecta que OTRA pestaña borró o modificó la cuenta de una mesa...
-    if (evento.key && (evento.key.startsWith('estado_') || evento.key.startsWith('cuenta_') || evento.key.startsWith('info_'))) {
-        console.log("Sincronizando: Otra pestaña modificó las mesas.");
-        
-        // Si tienes una función específica para recargar el monitor (como cargarMonitorPedidos), 
-        // ponla aquí. Si no, la forma más ruda y segura es recargar la página entera:
-        location.reload(); 
-    }
-    
-    // Si la caja liquidó el turno completo (borró muchas cosas a la vez), el evento key llega nulo
-    if (evento.key === null) {
-        location.reload();
-    }
-});
+        window.addEventListener('storage', function(evento) {
+            if (evento.key && (evento.key.startsWith('estado_') || evento.key.startsWith('cuenta_') || evento.key.startsWith('info_'))) {
+                console.log("Sincronizando: Otra pestaña modificó las mesas.");
+                location.reload(); 
+            }
+            if (evento.key === null) {
+                location.reload();
+            }
+        });
     </script>
+    <script src="../js/config.js"></script>
+    <script src="../js/notificaciones.js"></script>
 </body>
 </html>

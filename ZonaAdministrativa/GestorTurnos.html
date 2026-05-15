@@ -22,6 +22,7 @@
         .btn-forzar { background: var(--danger); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold;}
         .btn-forzar:hover { filter: brightness(1.2); }
     </style>
+    
 </head>
 <body>
     <div class="header">
@@ -84,20 +85,30 @@
         }
 
         async function forzarSalida(idTurnoEmp, nombre) {
-    if(!confirm(`¿Deseas finalizar el turno de ${nombre} de manera administrativa?`)) return;
-    
     try {
+        const confirmado = await mostrarConfirm(`¿Deseas finalizar el turno de ${nombre} de manera administrativa?`);
+        if (!confirmado) return;
+
         let req = await fetch('forzar_cierre_empleado.php', {
             method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id: idTurnoEmp })
         });
         let res = await req.json();
-        if(res.status === 'success') {
-            alert(res.message);
+        
+        if (res.status === 'success') {
+            await mostrarAlerta(res.message, '✅');
             cargarTurnos(); // Refresca la tabla
+        } else {
+            await mostrarAlerta('Error: ' + res.message, '❌');
         }
-    } catch(e) { alert("Error al conectar."); }
+    } catch (e) {
+        console.error(e);
+        await mostrarAlerta('Error al conectar con el servidor.', '❌');
+    }
 }
     </script>
+    <script src="../js/config.js"></script>
+    <script src="../js/notificaciones.js"></script>
 </body>
 </html>

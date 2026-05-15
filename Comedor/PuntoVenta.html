@@ -115,6 +115,7 @@
         .btn-accion:hover { filter: brightness(1.1); transform: translateY(-1px);}
 
     </style>
+    
 </head>
 <body>
     <div class="overlay"></div>
@@ -291,25 +292,26 @@
         }
 
         function agregarAlTicket(producto, cantidadAgregar) {
-            let itemExistente = cuentaNuevos.find(item => item.id == producto.ID_PRODUCTO);
-            
-            if (itemExistente) {
-                itemExistente.cantidad += cantidadAgregar;
-                itemExistente.subtotal = itemExistente.cantidad * parseFloat(producto.PRECIO);
-            } else {
-                cuentaNuevos.push({
-                    id: producto.ID_PRODUCTO, 
-                    nombre: producto.NOMBRE,
-                    precioUnitario: parseFloat(producto.PRECIO), 
-                    cantidad: cantidadAgregar,
-                    subtotal: cantidadAgregar * parseFloat(producto.PRECIO),
-                    categoria: producto.CATEGORIA || 'COCINA GENERAL',
-                    impreso: false 
-                });
-            }
-            cantidadGlobal = 1; document.getElementById('multiplicadorValor').innerText = cantidadGlobal;
-            actualizarTicketUI();
-        }
+    let itemExistente = cuentaNuevos.find(item => item.id == producto.ID_PRODUCTO);
+
+    if (itemExistente) {
+        itemExistente.cantidad += cantidadAgregar;
+        itemExistente.subtotal = itemExistente.cantidad * parseFloat(producto.PRECIO);
+    } else {
+        cuentaNuevos.push({
+            id: producto.ID_PRODUCTO,
+            nombre: producto.NOMBRE,
+            precioUnitario: parseFloat(producto.PRECIO),
+            cantidad: cantidadAgregar,
+            subtotal: cantidadAgregar * parseFloat(producto.PRECIO),
+            categoria: producto.CATEGORIA || 'COCINA GENERAL',
+            comentario: '' // inicialmente sin comentario
+        });
+    }
+    cantidadGlobal = 1;
+    document.getElementById('multiplicadorValor').innerText = cantidadGlobal;
+    actualizarTicketUI();
+}
 
         function ajustarCantidad(idProducto, cambio) {
             let itemIndex = cuentaNuevos.findIndex(item => item.id == idProducto);
@@ -333,18 +335,31 @@
             if(cuentaNuevos.length === 0) {
                 panel.innerHTML = '<div style="text-align:center; color:#aaa; margin-top:20px;">No hay comandas nuevas</div>';
             } else {
-                cuentaNuevos.forEach(item => {
-                    totalNuevos += item.subtotal;
-                    let div = document.createElement('div'); 
-                    div.className = 'item-comanda';
-                    div.innerHTML = `
-                        <div class="item-info"><span class="item-nombre">${item.nombre}</span><span class="item-precio-unitario">P.U: $${item.precioUnitario.toFixed(2)}</span></div>
-                        <div class="item-controles"><button class="btn-mini" onclick="ajustarCantidad('${item.id}', -1)">-</button><span style="font-weight:bold; min-width: 18px; text-align:center;">${item.cantidad}</span><button class="btn-mini" onclick="ajustarCantidad('${item.id}', 1)">+</button></div>
-                        <span class="item-total">$${item.subtotal.toFixed(2)}</span>
-                        <button class="btn-eliminar-item" onclick="quitarDelTicket('${item.id}')">X</button>
-                    `;
-                    panel.appendChild(div);
-                });
+                cuentaNuevos.forEach((item, index) => {
+    totalNuevos += item.subtotal;
+    let div = document.createElement('div');
+    div.className = 'item-comanda';
+
+    // Mostrar comentario si existe
+    let comentarioHTML = item.comentario ? `<div style="font-size:10px; color:var(--color-acento); font-style:italic;">${item.comentario}</div>` : '';
+
+    div.innerHTML = `
+        <div class="item-info">
+            <span class="item-nombre">${item.nombre}</span>
+            <span class="item-precio-unitario">P.U: $${item.precioUnitario.toFixed(2)}</span>
+            ${comentarioHTML}
+        </div>
+        <div class="item-controles">
+            <button class="btn-mini" onclick="ajustarCantidad('${item.id}', -1)">-</button>
+            <span style="font-weight:bold; min-width: 18px; text-align:center;">${item.cantidad}</span>
+            <button class="btn-mini" onclick="ajustarCantidad('${item.id}', 1)">+</button>
+        </div>
+        <span class="item-total">$${item.subtotal.toFixed(2)}</span>
+        <button class="btn-eliminar-item" onclick="quitarDelTicket('${item.id}')">X</button>
+        <button style="background:transparent; border:none; cursor:pointer; font-size:16px;" onclick="editarComentario(${index})">✏️</button>
+    `;
+    panel.appendChild(div);
+});
             }
             document.getElementById('ticketTotal').innerText = `POR ENVIAR: $${totalNuevos.toFixed(2)}`;
         }
@@ -371,6 +386,7 @@
                     return alert("Error en Base de Datos: " + data.message);
                 }
 
+                // --- IMPRESIÓN EN COCINA ---
                 let categorias = {};
                 cuentaNuevos.forEach(item => {
                     let cat = item.categoria || 'COCINA GENERAL'; 
@@ -385,13 +401,15 @@
                     setTimeout(() => {
                         let itemsHTML = "";
                         categorias[cat].forEach(i => {
-                            itemsHTML += `
-                                <tr>
-                                    <td style="width: 25%; text-align: center; font-size: 18px; white-space: nowrap; vertical-align: top; padding-right: 5px;"><b>[${i.cantidad}]</b></td>
-                                    <td style="width: 75%; font-size: 16px; font-weight: bold; text-align: left; vertical-align: top; line-height: 1.2;">${i.nombre}</td>
-                                </tr>
-                            `;
-                        });
+    let descripcion = i.nombre;
+    if (i.comentario) descripcion += `<br><span style="font-size:10px; font-weight:normal;">→ ${i.comentario}</span>`;
+    itemsHTML += `
+        <tr>
+            <td style="width: 25%; text-align: center; font-size: 18px; white-space: nowrap; vertical-align: top; padding-right: 5px;"><b>[${i.cantidad}]</b></td>
+            <td style="width: 75%; font-size: 16px; font-weight: bold; text-align: left; vertical-align: top; line-height: 1.2;">${descripcion}</td>
+        </tr>
+    `;
+});
 
                         let formatoIndividual = `
                             <html>
@@ -421,18 +439,25 @@
                     delay += 1500; 
                 }
 
-                // --- SOLUCIÓN DEL MONITOR: GUARDAR EN LA MEMORIA (localStorage) ---
+                // --- GUARDAR EN MEMORIA LOCAL Y BASE DE DATOS ---
                 let cuentaFinal = cuentaHistorica.concat(cuentaNuevos);
                 localStorage.setItem('cuenta_' + nombreMesaActual, JSON.stringify(cuentaFinal));
                 
                 cuentaNuevos = []; 
                 
-                if (esDomicilio) {
-                    localStorage.setItem('estado_' + nombreMesaActual, 'preparando');
-                } else {
-                    localStorage.setItem('estado_' + nombreMesaActual, 'ocupada');
-                }
+                // ACTUALIZAR ESTADO EN LA BASE DE DATOS
+                let nuevoEstado = esDomicilio ? 'preparando' : 'ocupada';
+                
+                // Actualizar localStorage (solo para uso local inmediato)
+                localStorage.setItem('estado_' + nombreMesaActual, nuevoEstado);
+                
+                // Llamar al endpoint que actualiza la base de datos (fuente de verdad)
+                let formEstado = new FormData();
+                formEstado.append('mesa', nombreMesaActual);
+                formEstado.append('estado', nuevoEstado);
+                fetch('actualizar_estado_mesa.php', { method: 'POST', body: formEstado });
 
+                // Redirigir tras las impresiones
                 setTimeout(() => {
                     volverAtras();
                 }, delay + 500);
@@ -442,6 +467,18 @@
                 alert("Error de conexión al servidor.");
             }
         }
+
+        async function editarComentario(index) {
+    const item = cuentaNuevos[index];
+    const comentarioActual = item.comentario || '';
+    const nuevo = await mostrarPrompt('Agregar especificación:', '✏️', comentarioActual);
+    if (nuevo !== null) {
+        item.comentario = nuevo.trim();
+        actualizarTicketUI();
+    }
+}
     </script>
+    <script src="../js/config.js"></script>
+    <script src="../js/notificaciones.js"></script>
 </body>
 </html>

@@ -50,6 +50,8 @@
         .btn-eliminar:hover { background: #dc3545; border-color: #dc3545; }
         .acciones-td { display: flex; gap: 5px; }
     </style>
+    <script src="../js/notificaciones.js"></script>
+    <script src="../js/config.js"></script>
 </head>
 <body>
 
@@ -119,19 +121,8 @@
         const mapaCategorias = { 1: 'Entradas', 2: 'Cortes Y Carne', 3: 'Mariscos', 4: 'Bebidas', 5: 'Postres', 6: 'Sushi' };
 
         document.addEventListener("DOMContentLoaded", () => {
-            cargarDiseno();
             cargarTablaProductos();
         });
-
-        function cargarDiseno() {
-            const root = document.documentElement;
-            const colorTexto = localStorage.getItem('--color-texto');
-            const colorAcento = localStorage.getItem('--color-acento');
-            if (colorTexto) root.style.setProperty('--color-texto', colorTexto);
-            if (colorAcento) root.style.setProperty('--color-acento', colorAcento);
-            const savedBg = localStorage.getItem('bgRestaurante');
-            if (savedBg) document.body.style.backgroundImage = `url(${savedBg})`;
-        }
 
         // --- BÚSQUEDA EN TIEMPO REAL ---
         function filtrarMenu() {
@@ -140,10 +131,8 @@
             let filas = tabla.getElementsByTagName("tr");
 
             for (let i = 0; i < filas.length; i++) {
-                // Si es la fila de "El menú está vacío", la ignoramos
                 if (filas[i].cells.length === 1) continue; 
 
-                // Obtenemos las celdas de Nombre (índice 1) y Categoría (índice 2)
                 let tdNombre = filas[i].getElementsByTagName("td")[1];
                 let tdCategoria = filas[i].getElementsByTagName("td")[2];
 
@@ -151,11 +140,10 @@
                     let textoNombre = tdNombre.textContent || tdNombre.innerText;
                     let textoCategoria = tdCategoria.textContent || tdCategoria.innerText;
                     
-                    // Comparamos si el texto escrito coincide con el nombre o la categoría
                     if (textoNombre.toLowerCase().indexOf(input) > -1 || textoCategoria.toLowerCase().indexOf(input) > -1) {
-                        filas[i].style.display = ""; // Mostramos
+                        filas[i].style.display = "";
                     } else {
-                        filas[i].style.display = "none"; // Ocultamos
+                        filas[i].style.display = "none";
                     }
                 }       
             }
@@ -208,7 +196,8 @@
             let id_categoria = document.getElementById('categoriaProducto').value;
 
             if (!nombre || !precio || precio <= 0) {
-                alert("Completa correctamente el nombre y el precio."); return;
+                await mostrarAlerta("Completa correctamente el nombre y el precio.", '⚠️');
+                return;
             }
 
             let url = idEditando === '' ? 'guardar_producto.php' : 'editar_producto.php';
@@ -219,18 +208,23 @@
             btnGuardar.innerText = "Procesando..."; btnGuardar.disabled = true;
 
             try {
-                let req = await fetch(url, { method: 'POST', body: JSON.stringify(datos) });
+                let req = await fetch(url, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(datos) 
+                });
                 let res = await req.json();
 
                 if (res.status === 'success') {
                     cancelarEdicion(); 
                     cargarTablaProductos(); 
-                    document.getElementById('inputBuscador').value = ''; // Limpiamos el buscador al guardar
+                    document.getElementById('inputBuscador').value = '';
+                    await mostrarAlerta('✅ Producto guardado correctamente.', '✅');
                 } else {
-                    alert("❌ " + res.message);
+                    await mostrarAlerta("❌ " + res.message, '❌');
                 }
             } catch (error) {
-                alert("Error de conexión.");
+                await mostrarAlerta("Error de conexión.", '❌');
             } finally {
                 btnGuardar.innerText = idEditando === '' ? "Guardar Producto" : "Actualizar Producto";
                 btnGuardar.disabled = false;
@@ -267,20 +261,26 @@
 
         // --- ELIMINAR ---
         async function eliminarProducto(id, nombre) {
-            if (!confirm(`¿Estás seguro de eliminar "${nombre}" del menú?`)) return;
+            const confirmado = await mostrarConfirm(`¿Estás seguro de eliminar "${nombre}" del menú?`);
+            if (!confirmado) return;
 
             try {
-                let req = await fetch('eliminar_producto.php', { method: 'POST', body: JSON.stringify({ id: id }) });
+                let req = await fetch('eliminar_producto.php', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: id }) 
+                });
                 let res = await req.json();
 
                 if (res.status === 'success') {
                     cargarTablaProductos();
-                    document.getElementById('inputBuscador').value = ''; // Limpiamos buscador al borrar
+                    document.getElementById('inputBuscador').value = '';
+                    await mostrarAlerta('🗑️ Producto eliminado correctamente.', '✅');
                 } else {
-                    alert("Error: " + res.message);
+                    await mostrarAlerta("Error: " + res.message, '❌');
                 }
             } catch (error) {
-                alert("Error de conexión al eliminar.");
+                await mostrarAlerta("Error de conexión al eliminar.", '❌');
             }
         }
     </script>

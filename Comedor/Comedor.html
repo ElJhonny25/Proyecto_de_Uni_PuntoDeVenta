@@ -62,6 +62,7 @@
         .cuenta-total { margin-top: 15px; text-align: right; font-size: 20px; font-weight: bold; background: #eee; padding: 10px; border-radius: 8px;}
         .btn-cerrar-modal { margin-top: 20px; width: 100%; padding: 12px; background: #333; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;}
     </style>
+   
 </head>
 <body>
 
@@ -111,7 +112,25 @@
     </div>
 
     <script>
-    
+    async function cancelarProducto(idDetalle) {
+    if (!confirm('¿Eliminar este producto de la cuenta?')) return;
+    try {
+        let resp = await fetch('cancelar_producto.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({id_detalle: idDetalle})
+        });
+        let res = await resp.json();
+        if (res.status === 'success') {
+            // Recargar la cuenta
+            consultarCuenta(mesaClickeadaActual.innerText);
+        } else {
+            alert(res.message);
+        }
+    } catch(e) {
+        console.error(e);
+    }
+}
         // --- CARGAR DISEÑO GLOBAL ---
         function cargarDiseno() {
             const root = document.documentElement;
@@ -145,53 +164,16 @@
                 if(mesero.foto && mesero.foto !== "null" && mesero.foto !== "") fotoDiv.style.backgroundImage = `url(${mesero.foto})`;
                 else fotoDiv.style.backgroundImage = "linear-gradient(45deg, #2c3e50, #fd746c)";
             } else {
-                // LE CAMBIÉ EL TEXTO PARA QUE SEPAS QUE SÍ SE ACTUALIZÓ EL ARCHIVO
                 alert("⛔ ACCESO DENEGADO ⛔\nNo se detectó ninguna sesión activa. Serás redirigido al Login."); 
-                
-                // RUTA CORREGIDA PARA QUE NO TE DEJE EN PANTALLA GRIS
                 window.location.href = "../Pagina_Principal/Pagina_Principal.html"; 
                 return;
             }
 
             // Cargamos las mesas desde PHP
             await cargarComedor();
-            ejecutarComandoMesa();
-            setInterval(sincronizarColores, 4000);
+            // Sincronización cada 1 segundo (tiempo real)
+            setInterval(sincronizarColores, 1000);
         });
-
-        // --- PINTAR MESAS ROJAS ---
-        function pintarMesasOcupadas() {
-            let botonesMesa = document.querySelectorAll('.mesa'); 
-            botonesMesa.forEach(boton => {
-                let nombreMesa = boton.innerText.trim(); 
-                let estado = localStorage.getItem('estado_' + nombreMesa);
-
-                if (estado === 'ocupada') {
-                    boton.classList.remove('libre');
-                    boton.classList.add('ocupada');
-                } 
-            });
-        }
-
-        // --- MAGIA EN TIEMPO REAL (SINCRONIZACIÓN CON LA CAJA) ---
-        window.addEventListener('storage', function(e) {
-            if (e.key === 'comandoMesa' && e.newValue) {
-                ejecutarComandoMesa();
-            }
-        });
-
-        function ejecutarComandoMesa() {
-            let comando = JSON.parse(localStorage.getItem('comandoMesa'));
-            if (comando) {
-                document.querySelectorAll('.mesa').forEach(m => {
-                    if(m.innerText === comando.nombre) {
-                        m.className = `mesa ${comando.estado}`; 
-                    }
-                });
-                localStorage.removeItem('comandoMesa');
-                guardarComedor(); 
-            }
-        }
 
         // --- RESTRICCIÓN DE SEGURIDAD POR CARGO ---
         function toggleEditMode() {
@@ -269,12 +251,10 @@
             contextMenu.style.display = 'none';
             
             try {
-                // Le pedimos la cuenta a la Base de Datos
                 let req = await fetch('cargar_cuenta_mesa.php?mesa=' + encodeURIComponent(nombre));
                 let res = await req.json();
 
                 if (res.status === 'success') {
-                    // Si hay cuenta, la mostramos en el Modal
                     document.getElementById('modalCuentaTitulo').innerText = "Cuenta " + nombre + " (Folio " + res.folio + ")";
                     
                     let htmlItems = ""; 
@@ -301,7 +281,6 @@
             let nombreMesa = mesaClickeadaActual.innerText.trim();
 
             try {
-                // 1. Vamos a la base de datos por la cuenta real
                 let req = await fetch('cargar_cuenta_mesa.php?mesa=' + encodeURIComponent(nombreMesa));
                 let res = await req.json();
 
@@ -309,7 +288,6 @@
                     return alert("No se encontró cuenta activa para esta mesa.");
                 }
 
-                // 2. Armamos la lista de platillos
                 let fecha = new Date().toLocaleString('es-MX');
                 let htmlItems = "";
                 res.items.forEach(i => {
@@ -321,7 +299,6 @@
                         </tr>`;
                 });
 
-                // 3. Diseñamos el ticket térmico
                 let formatoTicket = `
                     <html>
                     <head>
@@ -353,7 +330,6 @@
                     </html>
                 `;
 
-                // 4. Mandamos a la impresora térmica
                 let ventanaImpresion = window.open('', '_blank', 'width=400,height=600');
                 ventanaImpresion.document.write(formatoTicket);
                 ventanaImpresion.document.close();
@@ -363,13 +339,18 @@
                     ventanaImpresion.print(); 
                     ventanaImpresion.close();
 
-                    // 5. Cambiamos la mesa a estado Sucia (Amarilla) visualmente y en memoria
+                    // Cambiamos la mesa a estado Sucia visualmente
                     mesaClickeadaActual.classList.remove('ocupada');
                     mesaClickeadaActual.classList.add('sucia');
-                    localStorage.setItem('estado_' + nombreMesa, 'sucia');
                     
-                    // Avisamos a todos (incluida la Caja) que la mesa ya solicitó la cuenta
-                    localStorage.setItem('comandoMesa', JSON.stringify({ nombre: nombreMesa, estado: 'sucia' }));
+                    // Actualizar BASE DE DATOS
+                    let form = new FormData();
+                    form.append('mesa', nombreMesa);
+                    form.append('estado', 'sucia');
+                    fetch('actualizar_estado_mesa.php', { method: 'POST', body: form });
+                    
+                    // Actualizar localStorage local
+                    localStorage.setItem('estado_' + nombreMesa, 'sucia');
                     
                     guardarComedor(); 
                 }, 500);
@@ -386,12 +367,13 @@
             guardarComedor(); 
         }
         
-        function cerrarSesion() { 
-            if(confirm("¿Estás seguro que deseas cerrar sesión?")) { 
-                localStorage.removeItem('meseroActivo'); 
-                window.location.href = "../Pagina_Principal/Pagina_Principal.html"; 
-            } 
-        }
+        async function cerrarSesion() {
+    const confirmado = await mostrarConfirm("¿Estás seguro que deseas cerrar sesión?");
+    if (confirmado) {
+        localStorage.removeItem('meseroActivo');
+        window.location.href = "../Pagina_Principal/Pagina_Principal.html";
+    }
+}
 
        // --- GESTIÓN DE ÁREAS Y MESAS ---
         async function guardarComedor() {
@@ -453,10 +435,6 @@
                         }
                     });
 
-                    // ---> AQUÍ PINTAMOS LAS MESAS ROJAS DESPUÉS DE QUE SE CREAN <---
-                    pintarMesasOcupadas();
-                    
-                    // Guardamos por si algo cambió de color
                     guardarComedor();
                 }
             } catch(e) {}
@@ -504,7 +482,7 @@
             }
         }
 
-       function eliminarMesaSeleccionada() {
+       /*function eliminarMesaSeleccionada() {
             if (mesaSeleccionada) {
                 if (!mesaSeleccionada.classList.contains('libre')) {
                     alert("⛔ OPERACIÓN DENEGADA\nNo puedes eliminar una mesa que está Ocupada (Roja) o con Cuenta Pendiente (Amarilla).\nDebes cobrarla o liberarla antes de eliminarla del plano.");
@@ -519,7 +497,16 @@
             } else {
                 alert("Selecciona una mesa haciendo clic sobre ella primero.");
             }
-        }
+        }*/
+       async function eliminarMesaSeleccionada() {
+    // ...
+    const confirmado = await mostrarConfirm("¿Eliminar mesa " + mesaSeleccionada.innerText + "?");
+    if (confirmado) {
+        mesaSeleccionada.remove(); 
+        mesaSeleccionada = null; 
+        guardarComedor(); 
+    }
+}
 
         function agregarMesa() { const c = document.querySelector('.area-layer.active'); if(!c) return alert("Selecciona un área."); let n = prompt("Identificador de la mesa:"); if (!n || n.trim() === "") return; n = n.trim(); let e = false; c.querySelectorAll('.mesa').forEach(m => { if(m.innerText === n) e = true; }); if(e) return alert("Mesa ya existe."); const m = document.createElement('div'); m.classList.add('mesa', 'libre'); m.style.left = '200px'; m.style.top = '200px'; m.style.cursor = isEditing ? 'grab' : 'pointer'; m.innerText = n; c.appendChild(m); quitarSeleccionMesas(); m.classList.add('selected'); mesaSeleccionada = m; guardarComedor(); }
         function quitarSeleccionMesas() { document.querySelectorAll('.mesa').forEach(m => m.classList.remove('selected')); mesaSeleccionada = null; }
@@ -573,7 +560,6 @@
 
 
         async function sincronizarColores() {
-            // Si el Administrador está moviendo las mesas, pausamos la sincronización para no interrumpirlo
             if (isEditing) return; 
 
             try {
@@ -581,39 +567,32 @@
                 let res = await req.json();
                 
                 if (res.status === 'success') {
-                    // Recorremos las mesas que trajo la base de datos
                     res.mesas.forEach(mesaBD => {
-                        // Buscamos la bolita HTML de la mesa correspondiente
                         let mesaHTML = Array.from(document.querySelectorAll('.mesa'))
                                             .find(el => el.innerText.trim() === mesaBD.nombre);
                         
-                        // Si la encontramos, simplemente le sobreescribimos el color que diga la Base de Datos
                         if (mesaHTML) {
                             mesaHTML.className = `mesa ${mesaBD.estado}`; 
                             
-                            // Si la mesa estaba seleccionada (con el borde azul), se lo devolvemos
                             if (mesaSeleccionada && mesaSeleccionada.innerText === mesaBD.nombre) {
                                 mesaHTML.classList.add('selected');
                             }
                         }
                     });
                 }
-            } catch(e) {
-                // Si falla la conexión un segundo, lo ignoramos silenciosamente
-            }
+            } catch(e) {}
         }
 
         function habilitarEdicion() {
-    // Obtenemos los datos que guardamos al entrar
-    let mesero = JSON.parse(localStorage.getItem('meseroActivo'));
-
-    // 🛡️ VALIDACIÓN: Ahora que el PHP envía "CARGO", lo leemos así
-    if (mesero && mesero.CARGO === 'Administrador') {
-        window.location.href = 'EditarDisenoComedor.html';
-    } else {
-        alert("⛔ No tienes permisos de Administrador para modificar el diseño del comedor.");
-    }
-}
+            let mesero = JSON.parse(localStorage.getItem('meseroActivo'));
+            if (mesero && mesero.CARGO === 'Administrador') {
+                window.location.href = 'EditarDisenoComedor.html';
+            } else {
+                alert("⛔ No tienes permisos de Administrador para modificar el diseño del comedor.");
+            }
+        }
     </script>
+     <script src="../js/config.js"></script>
+     <script src="../js/notificaciones.js"></script>
 </body>
 </html>

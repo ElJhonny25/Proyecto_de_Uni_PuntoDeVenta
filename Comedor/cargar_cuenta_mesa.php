@@ -16,10 +16,10 @@ try {
     }
 
     // 2. Extraemos el detalle cruzando con la tabla PRODUCTO para obtener el nombre
-    $sqlDet = "SELECT p.NOMBRE, d.CANTIDAD, d.PRECIO_UNITARIO, d.SUBTOTAL 
-               FROM DETALLE_CUENTA d 
-               JOIN PRODUCTO p ON d.ID_PRODUCTO = p.ID_PRODUCTO 
-               WHERE d.FOLIO_CUENTA = :folio";
+   $sqlDet = "SELECT d.ID_DETALLE, p.NOMBRE, d.CANTIDAD, d.PRECIO_UNITARIO, d.SUBTOTAL 
+           FROM DETALLE_CUENTA d 
+           JOIN PRODUCTO p ON d.ID_PRODUCTO = p.ID_PRODUCTO 
+           WHERE d.FOLIO_CUENTA = :folio";
     
     $stmtDet = $conn->prepare($sqlDet);
     $stmtDet->execute([':folio' => $cuenta['FOLIO']]);

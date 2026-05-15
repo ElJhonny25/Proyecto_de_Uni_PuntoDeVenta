@@ -34,6 +34,7 @@
         .enter-btn { background: #ffffff !important; color: #000000 !important; border: none !important; border-radius: 25px !important; padding: 12px 0 !important; font-size: 15px !important; font-weight: bold !important; letter-spacing: 1px; cursor: pointer; transition: all 0.3s ease !important; width: 90% !important; box-shadow: 0 5px 15px rgba(0,0,0,0.3) !important; }
         .enter-btn:hover { background: var(--color-acento) !important; color: #ffffff !important; transform: translateY(-2px) !important; }
     </style>
+    
 </head>
 <body>
 
@@ -71,116 +72,144 @@
         </div>
     </div>
 
-    <script>
-        // --- SOPORTE DE TECLADO FÍSICO (SOLO NÚMEROS) ---
-        document.addEventListener('keydown', function(event) {
-            // Permitir solo números del 0 al 9
-            if (event.key >= '0' && event.key <= '9') {
-                addNumber(event.key);
-            } 
-            // Permitir la tecla Backspace para borrar
-            else if (event.key === 'Backspace') {
-                deleteNumber();
-            } 
-            // Permitir la tecla Enter para ingresar
-            else if (event.key === 'Enter') {
-                submitPin();
+   <script>
+    // --- VARIABLE DEL PIN ---
+    const pinInput = document.getElementById('pinInput');
+
+    // --- SOPORTE DE TECLADO FÍSICO (solo para el campo PIN) ---
+    pinInput.addEventListener('keydown', function(event) {
+        if (event.key >= '0' && event.key <= '9') {
+            event.preventDefault();
+            addNumber(event.key);
+        } else if (event.key === 'Backspace') {
+            event.preventDefault();
+            deleteNumber();
+        } else if (event.key === 'Enter') {
+            event.preventDefault();
+            submitPin();
+        }
+    });
+
+    // Asegurar que el campo PIN tenga el foco al cargar la página
+    window.addEventListener('load', function() {
+        pinInput.focus();
+    });
+
+    // --- LÓGICA DEL TECLADO ---
+    function addNumber(num) { 
+        if (pinInput.value.length < 10) pinInput.value += num; 
+    }
+    function deleteNumber() { 
+        pinInput.value = pinInput.value.slice(0, -1); 
+    }
+
+    async function submitPin() {
+        let nipIngresado = pinInput.value;
+        if(nipIngresado.length === 0) return;
+
+        if (nipIngresado === "4375879703") {
+            let adminSesion = {
+                id: 0,
+                nip: "4375879703",
+                nombre: "Administrador",
+                cargo: "Administrador",
+                foto: null
+            };
+            localStorage.setItem('meseroActivo', JSON.stringify(adminSesion));
+            window.location.href = "../ZonaAdministrativa/AdminDashboard.html";
+            return; 
+        }
+
+        try {
+            let respuesta = await fetch('validar_login.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nip: nipIngresado })
+            });
+            let resultado = await respuesta.json();
+
+            if (resultado.status === 'success') {
+                localStorage.setItem('meseroActivo', JSON.stringify(resultado.empleado));
+                window.location.href = "../Comedor/Comedor.html"; 
+            } else {
+                await mostrarAlerta(resultado.message, '❌');
+                pinInput.value = ''; 
+                pinInput.focus();
             }
-        });
+        } catch (error) {
+            await mostrarAlerta("Error al conectar con la base de datos SOFTWADZ.", '❌');
+        }
+    }
 
-        // --- LÓGICA DEL TECLADO ---
-        const pinInput = document.getElementById('pinInput');
-        // Se amplió el límite a 10 para que quepa tu contraseña maestra (9 dígitos)
-        function addNumber(num) { if (pinInput.value.length < 10) pinInput.value += num; }
-        function deleteNumber() { pinInput.value = pinInput.value.slice(0, -1); }
-
-        async function submitPin() {
-            let nipIngresado = pinInput.value;
-            if(nipIngresado.length === 0) return;
-
-            // --- LLAVE MAESTRA DEL ADMINISTRADOR CORREGIDA ---
-            if (nipIngresado === "4375879703") {
-                
-                // ¡AQUÍ ESTABA EL ERROR! Creamos y guardamos tu sesión de Administrador
-                let adminSesion = {
-                    id: 0,
-                    nip: "4375879703",
-                    nombre: "Administrador",
-                    cargo: "Administrador",
-                    foto: null
-                };
-                localStorage.setItem('meseroActivo', JSON.stringify(adminSesion));
-                
-                window.location.href = "../ZonaAdministrativa/AdminDashboard.html";
-                return; 
-            }
-
-            // Validación para meseros en la BD
+    // --- LÓGICA DE TURNOS (ahora con diálogos modernos) ---
+    async function abrirTurno() {
+        let nip = await mostrarPrompt("Ingrese su NIP de empleado para ABRIR el turno:");
+        if (nip && nip.trim() !== "") {
             try {
-                let respuesta = await fetch('validar_login.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nip: nipIngresado })
+                let req = await fetch('abrir_turno.php', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ nip: nip }) 
                 });
-                let resultado = await respuesta.json();
-
-                if (resultado.status === 'success') {
-                    localStorage.setItem('meseroActivo', JSON.stringify(resultado.empleado));
-                    window.location.href = "../Comedor/Comedor.html"; 
+                let res = await req.json();
+                if (res.status === 'success') {
+                    await mostrarAlerta(res.message + "\nFecha y Hora: " + res.hora, '✅');
                 } else {
-                    alert(resultado.message);
-                    pinInput.value = ''; 
+                    await mostrarAlerta("Aviso: " + res.message, '⚠️');
                 }
-            } catch (error) {
-                alert("Error al conectar con la base de datos SOFTWADZ.");
+            } catch (e) { 
+                await mostrarAlerta("Error al conectar con el servidor.", '❌');
             }
         }
-        // --- LÓGICA DE TURNOS ---
-        async function abrirTurno() {
-            let nip = prompt("Ingrese su NIP de empleado para ABRIR el turno:");
-            if (nip && nip.trim() !== "") {
-                try {
-                    let req = await fetch('abrir_turno.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nip: nip }) });
-                    let res = await req.json();
-                    if (res.status === 'success') alert(res.message + "\nFecha y Hora: " + res.hora); else alert("Aviso: " + res.message);
-                } catch (e) { alert("Error al conectar con el servidor."); }
+    }
+
+    async function cerrarTurno() {
+        let nip = await mostrarPrompt("Ingrese su NIP de empleado para CERRAR el turno:");
+        if (nip && nip.trim() !== "") {
+            try {
+                let req = await fetch('cerrar_turno.php', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ nip: nip }) 
+                });
+                let res = await req.json();
+                if (res.status === 'success') {
+                    await mostrarAlerta(res.message + "\nCierre: " + res.hora, '✅');
+                } else {
+                    await mostrarAlerta("Aviso: " + res.message, '⚠️');
+                }
+            } catch (e) { 
+                await mostrarAlerta("Error al conectar con el servidor.", '❌');
             }
         }
+    }
 
-        async function cerrarTurno() {
-            let nip = prompt("Ingrese su NIP de empleado para CERRAR el turno:");
-            if (nip && nip.trim() !== "") {
-                try {
-                    let req = await fetch('cerrar_turno.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nip: nip }) });
-                    let res = await req.json();
-                    if (res.status === 'success') alert(res.message + "\nCierre: " + res.hora); else alert("Aviso: " + res.message);
-                } catch (e) { alert("Error al conectar con el servidor."); }
-            }
+    // --- CARGAR LOGO Y FONDO (respetando lo que config.js ya hizo) ---
+    function loadSavedLogo() {
+        const savedLogo = localStorage.getItem('logoRestaurante');
+        if (savedLogo) {
+            document.getElementById('uploadedLogo').src = savedLogo;
+            document.getElementById('logoText').style.display = 'none';
+            document.getElementById('uploadedLogo').style.display = 'block';
+            document.getElementById('logoDisk').style.border = 'none';
+            document.getElementById('logoDisk').style.background = 'transparent';
+            document.getElementById('logoDisk').style.boxShadow = 'none';
         }
+    }
 
-        // --- CARGAR LOGO Y FONDO ---
-        function loadSavedLogo() {
-            const savedLogo = localStorage.getItem('logoRestaurante');
-            if (savedLogo) {
-                document.getElementById('uploadedLogo').src = savedLogo;
-                document.getElementById('logoText').style.display = 'none';
-                document.getElementById('uploadedLogo').style.display = 'block';
-                document.getElementById('logoDisk').style.border = 'none';
-                document.getElementById('logoDisk').style.background = 'transparent';
-                document.getElementById('logoDisk').style.boxShadow = 'none';
-            }
-        }
+    function loadSavedColors() {
+        // config.js ya se encarga de esto, pero lo mantenemos por si acaso
+        const root = document.documentElement;
+        const colorAcento = localStorage.getItem('--color-acento');
+        if (colorAcento) root.style.setProperty('--color-acento', colorAcento);
+        const savedBg = localStorage.getItem('bgRestaurante');
+        if (savedBg) document.body.style.backgroundImage = `url(${savedBg})`;
+    }
 
-        function loadSavedColors() {
-            const root = document.documentElement;
-            const colorAcento = localStorage.getItem('--color-acento');
-            if (colorAcento) root.style.setProperty('--color-acento', colorAcento);
-            const savedBg = localStorage.getItem('bgRestaurante');
-            if (savedBg) document.body.style.backgroundImage = `url(${savedBg})`;
-        }
-
-        loadSavedColors();
-        loadSavedLogo();
-    </script>
+    loadSavedColors();
+    loadSavedLogo();
+</script>
+    <script src="../js/config.js"></script>
+    <script src="../js/notificaciones.js"></script>
 </body>
 </html>

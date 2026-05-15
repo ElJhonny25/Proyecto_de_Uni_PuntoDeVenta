@@ -61,6 +61,7 @@
         .btn-action-main:disabled { background: #444; color: #888; cursor: not-allowed; }
         .btn-action-main:not(:disabled):hover { transform: scale(1.02); filter: brightness(1.1); }
     </style>
+    
 </head>
 <body>
     <div class="overlay"></div>
@@ -215,7 +216,6 @@
             let html = "";
             if (itemsActuales.length > 0) {
                 itemsActuales.forEach(i => {
-                    // Protegido contra Mayúsculas y Minúsculas
                     let cant = i.CANTIDAD || i.cantidad || 0;
                     let nom = i.NOMBRE || i.nombre || 'Producto';
                     let sub = i.SUBTOTAL || i.subtotal || 0;
@@ -341,26 +341,29 @@
                 </html>
             `;
             
-            // Usamos el Iframe invisible para imprimir
             let iframe = document.getElementById('marcoImpresora');
             let doc = iframe.contentWindow.document;
             doc.open();
             doc.write(formatoTicket);
             doc.close();
             
-            // Desbloqueo INSTANTÁNEO de la caja visualmente (sin esperar a SQL)
+            // Actualizar estado y desbloquear caja
             estadoMesaSeleccionada = 'sucia';
             document.getElementById('alertaImpresion').style.display = 'none';
             document.getElementById('inputRecibido').disabled = false;
             document.querySelectorAll('.btn-billete').forEach(b => b.disabled = false);
 
-            // Mandamos a imprimir después de un parpadeo
+            // ⭐ Actualizar BASE DE DATOS a 'sucia'
+            fetch('../Comedor/actualizar_estado_mesa.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ mesa: mesaSeleccionada, estado: 'sucia' })
+            });
+            localStorage.setItem('estado_' + mesaSeleccionada, 'sucia');
+
             setTimeout(() => { 
                 iframe.contentWindow.focus();
                 iframe.contentWindow.print(); 
-                
-                // Actualizamos el estado para la próxima recarga
-                localStorage.setItem('comandoMesa', JSON.stringify({ nombre: mesaSeleccionada, estado: 'sucia' }));
                 actualizandoMesas = false; 
                 cargarMesasPendientes(); 
             }, 500);
@@ -383,9 +386,27 @@
                 if(res.status === 'success') {
                     alert(`✅ COBRO PROCESADO\nMesa liquidada correctamente en el sistema.`);
                     
-                    localStorage.removeItem('cuenta_' + mesaSeleccionada);
-                    localStorage.setItem('estado_' + mesaSeleccionada, 'libre');
-                    localStorage.setItem('comandoMesa', JSON.stringify({ nombre: mesaSeleccionada, estado: 'libre' }));
+                    // ⭐ Liberar mesa en la base de datos (CON VERIFICACIÓN)
+try {
+    let respEstado = await fetch('../Comedor/actualizar_estado_mesa.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ mesa: mesaSeleccionada, estado: 'libre' })
+    });
+    let jsonEstado = await respEstado.json();
+    
+    if (jsonEstado.status === 'success') {
+        // Solo si se actualizó bien, limpiamos el almacenamiento local
+        localStorage.removeItem('cuenta_' + mesaSeleccionada);
+        localStorage.setItem('estado_' + mesaSeleccionada, 'libre');
+    } else {
+        console.error("Error al liberar mesa en BD:", jsonEstado.message);
+        alert("⚠️ La mesa se cobró pero no se pudo liberar en el comedor. Error: " + jsonEstado.message);
+    }
+} catch (error) {
+    console.error("Error de red al liberar mesa:", error);
+    alert("⚠️ No se pudo contactar al servidor para liberar la mesa. Verifique la conexión.");
+}
 
                     mesaSeleccionada = null;
                     folioActivo = null;
@@ -411,5 +432,7 @@
             }
         }
     </script>
+    <script src="../js/config.js"></script>
+    <script src="../js/notificaciones.js"></script>
 </body>
 </html>

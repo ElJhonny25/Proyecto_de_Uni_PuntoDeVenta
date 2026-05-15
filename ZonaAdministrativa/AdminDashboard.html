@@ -76,6 +76,7 @@
             .btn-cerrar { background: #dc3545; }
             .btn-cerrar:hover { background: #c82333; }
         </style>
+       
     </head>
     <body>
 
@@ -169,7 +170,7 @@
 
         <script>
             // --- LOGICA DE PERSONALIZACIÓN DE INTERFAZ ---
-            function cargarDiseno() {
+         function cargarDiseno() {
                 const root = document.documentElement;
                 const colorAcento = localStorage.getItem('--color-acento');
                 if (colorAcento) { root.style.setProperty('--color-acento', colorAcento); document.getElementById('colorAcento').value = colorAcento; }
@@ -178,10 +179,35 @@
             }
             cargarDiseno();
 
-            document.getElementById('colorAcento').addEventListener('input', function(e) {
-                document.documentElement.style.setProperty('--color-acento', e.target.value);
-                localStorage.setItem('--color-acento', e.target.value);
-            });
+          document.getElementById('colorAcento').addEventListener('input', function(e) {
+    document.documentElement.style.setProperty('--color-acento', e.target.value);
+});
+
+// Guardar configuración en BD al cerrar el modal
+async function guardarConfiguracionEnBD() {
+    const colorAcento = document.getElementById('colorAcento').value;
+    const logo = localStorage.getItem('logoRestaurante'); // ya se guardó al cargar la imagen
+    const fondo = localStorage.getItem('bgRestaurante');
+
+    const configuraciones = [
+        { clave: 'color_acento', valor: colorAcento }
+    ];
+    if (logo) configuraciones.push({ clave: 'logo', valor: logo });
+    if (fondo) configuraciones.push({ clave: 'fondo', valor: fondo });
+
+    console.log('Guardando en BD:', configuraciones);
+    try {
+        const resp = await fetch('guardar_configuracion.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ configuraciones: configuraciones })
+        });
+        const res = await resp.json();
+        console.log('Respuesta guardado:', res);
+    } catch (error) {
+        console.error('Error guardando configuración:', error);
+    }
+}
 
             document.getElementById('logoInput').addEventListener('change', function() {
                 const file = this.files[0];
@@ -223,7 +249,11 @@
                 }
             });
 
-            function closeSettings() { document.getElementById('settingsModal').style.display = 'none'; }
+           function closeSettings() {
+    guardarConfiguracionEnBD().finally(() => {
+        document.getElementById('settingsModal').style.display = 'none';
+    });
+}
             function resetColors() {
                 localStorage.removeItem('--color-acento'); localStorage.removeItem('logoRestaurante'); localStorage.removeItem('bgRestaurante');
                 location.reload(); 
@@ -278,35 +308,33 @@
                 }
             }
 
-            async function abrirTurnoGeneral() {
-                let fondoStr = prompt("¿Con cuánto efectivo en caja inicia el turno? (Fondo de caja)");
-                if (fondoStr === null) return; // Canceló
-                
-                let fondo = parseFloat(fondoStr);
-                if (isNaN(fondo) || fondo < 0) return alert("Por favor ingresa una cantidad válida.");
+          async function abrirTurnoGeneral() {
+    let fondoStr = await mostrarPrompt("¿Con cuánto efectivo en caja inicia el turno? (Fondo de caja)");
+    if (fondoStr === null || fondoStr.trim() === "") return; // Canceló o vacío
 
-                let formData = new FormData();
-                formData.append('accion', 'abrir');
-                formData.append('fondo', fondo);
+    let fondo = parseFloat(fondoStr);
+    if (isNaN(fondo) || fondo < 0) return alert("Por favor ingresa una cantidad válida.");
 
-                try {
-                    let resp = await fetch('gestion_turno.php', { method: 'POST', body: formData });
-                    let data = await resp.json();
-                    if (data.status === 'success') {
-                        alert("✅ " + data.message);
-                        
-                        // CORRECCIÓN PRINCIPAL: Llamar a la función correcta
-                        revisarEstadoDelTurno(); 
-                    } else {
-                        alert("❌ Error: " + data.message);
-                    }
-                } catch (error) {
-                    console.error("Error abriendo turno:", error);
-                }
-            }
+    let formData = new FormData();
+    formData.append('accion', 'abrir');
+    formData.append('fondo', fondo);
 
+    try {
+        let resp = await fetch('gestion_turno.php', { method: 'POST', body: formData });
+        let data = await resp.json();
+        if (data.status === 'success') {
+            alert("✅ " + data.message);
+            revisarEstadoDelTurno();
+        } else {
+            alert("❌ Error: " + data.message);
+        }
+    } catch (error) {
+        console.error("Error abriendo turno:", error);
+    }
+}
             async function cerrarTurnoGeneral() {
-    if (!confirm("¿Estás seguro de cerrar el turno general?")) return;
+    const confirmado = await mostrarConfirm("¿Estás seguro de cerrar el turno general?");
+    if (!confirmado) return;
 
     try {
         let req = await fetch('cerrar_turno_general.php');
@@ -314,7 +342,7 @@
 
         if (res.status === 'success') {
             alert(res.message);
-            revisarEstadoDelTurno(); // En lugar de recargar toda la página
+            revisarEstadoDelTurno();
         } else {
             alert("❌ " + res.message);
         }
@@ -322,7 +350,6 @@
         alert("Error de conexión al intentar cerrar el turno.");
     }
 }
-
     async function cargarEstadoTurno() {
         try {
             let req = await fetch('obtener_estado_turno.php'); 
@@ -355,5 +382,7 @@
         cargarEstadoTurno();
     });
         </script>
+         <script src="../js/config.js"></script>
+         <script src="../js/notificaciones.js"></script>
     </body>
     </html>
