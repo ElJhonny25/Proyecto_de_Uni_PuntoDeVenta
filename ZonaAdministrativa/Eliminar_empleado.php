@@ -79,6 +79,10 @@ try {
         </div>
         
         <h2>Gestión de Personal</h2>
+        <div style="display: flex; align-items: center; background: rgba(0,0,0,0.5); border-radius: 15px; border: 1px solid rgba(255,255,255,0.2); padding: 8px 15px; margin-bottom: 15px;">
+    <span style="font-size: 16px;">🔍</span>
+    <input type="text" id="buscadorPersonal" placeholder="Buscar por nombre o cargo..." style="background: transparent; border: none; color: white; width: 100%; padding: 10px 5px; outline: none; font-family: 'Montserrat', sans-serif; font-size: 14px;" oninput="filtrarPersonal()">
+</div>
 
         <table>
             <thead>
@@ -159,132 +163,148 @@ try {
         </div>
     </div>
 
-    <script>
-        // --- ELIMINAR EMPLEADO ---
-        async function eliminarEmpleado(id, nombre) {
-            const confirmado = await mostrarConfirm(`¿Estás seguro de que deseas eliminar permanentemente a ${nombre}?`);
-            if (!confirmado) return;
-
-            try {
-                let req = await fetch('borrar_empleado.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id_empleado: id })
-                });
-                let res = await req.json();
-                if (res.status === 'success') {
-                    document.getElementById('fila-' + id).remove();
-                    await mostrarAlerta('Empleado eliminado correctamente.', '🗑️');
-                } else {
-                    await mostrarAlerta("Error: " + res.message, '❌');
-                }
-            } catch(e) {
-                await mostrarAlerta("Error de conexión al eliminar.", '❌');
+   <script>
+    // --- FILTRO DE PERSONAL ---
+    function filtrarPersonal() {
+        const input = document.getElementById('buscadorPersonal');
+        const filtro = input.value.toLowerCase();
+        const filas = document.querySelectorAll('tbody tr');
+        filas.forEach(fila => {
+            if (fila.cells.length < 7) return; // fila de "no hay empleados"
+            const nombre = fila.cells[2]?.innerText.toLowerCase() || '';
+            const cargo = fila.cells[5]?.innerText.toLowerCase() || '';
+            if (nombre.includes(filtro) || cargo.includes(filtro)) {
+                fila.style.display = '';
+            } else {
+                fila.style.display = 'none';
             }
-        }
+        });
+    }
 
-        // --- ABRIR MODAL DE EDICIÓN ---
-        function abrirEdicion(id) {
-            document.getElementById('editId').value = id;
-            document.getElementById('editNombre').value = document.getElementById('nom-' + id).innerText;
-            document.getElementById('editApPaterno').value = document.getElementById('app-' + id).innerText;
-            document.getElementById('editApMaterno').value = document.getElementById('apm-' + id).innerText;
-            document.getElementById('editCargo').value = document.getElementById('car-' + id).getAttribute('data-idcargo');
-            
-            let fotoActual = document.getElementById('raw-foto-' + id).value;
-            document.getElementById('editPreviewImg').src = fotoActual ? fotoActual : 'https://via.placeholder.com/100?text=Sin+Foto';
-            document.getElementById('editFoto').value = '';
-            
-            document.getElementById('modalEditar').style.display = 'flex';
-        }
+    // --- ELIMINAR EMPLEADO ---
+    async function eliminarEmpleado(id, nombre) {
+        const confirmado = await mostrarConfirm(`¿Estás seguro de que deseas eliminar permanentemente a ${nombre}?`);
+        if (!confirmado) return;
 
-        function cerrarEdicion() {
-            document.getElementById('modalEditar').style.display = 'none';
-        }
-
-        // Previsualizar foto al seleccionar archivo
-        function previsualizarEditFoto(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    document.getElementById('editPreviewImg').src = e.target.result;
-                }
-                reader.readAsDataURL(file);
-            }
-        }
-
-        // Convertir foto a Base64 comprimida (ligera)
-        function leerFotoBase64(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const img = new Image();
-                    img.src = e.target.result;
-                    img.onload = function() {
-                        const canvas = document.createElement('canvas');
-                        const ctx = canvas.getContext('2d');
-                        const MAX_WIDTH = 300;
-                        const MAX_HEIGHT = 300;
-                        let width = img.width;
-                        let height = img.height;
-                        if (width > height) {
-                            if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-                        } else {
-                            if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
-                        }
-                        canvas.width = width;
-                        canvas.height = height;
-                        ctx.drawImage(img, 0, 0, width, height);
-                        resolve(canvas.toDataURL('image/jpeg', 0.7));
-                    };
-                    img.onerror = error => reject(error);
-                };
-                reader.onerror = error => reject(error);
-                reader.readAsDataURL(file);
+        try {
+            let req = await fetch('borrar_empleado.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id_empleado: id })
             });
+            let res = await req.json();
+            if (res.status === 'success') {
+                document.getElementById('fila-' + id).remove();
+                await mostrarAlerta('Empleado eliminado correctamente.', '🗑️');
+            } else {
+                await mostrarAlerta("Error: " + res.message, '❌');
+            }
+        } catch(e) {
+            await mostrarAlerta("Error de conexión al eliminar.", '❌');
         }
+    }
 
-        // --- GUARDAR EDICIÓN ---
-        async function guardarEdicion() {
-            let id = document.getElementById('editId').value;
-            let fotoInput = document.getElementById('editFoto').files[0];
-            
-            let datos = {
-                id_empleado: id,
-                nombre: document.getElementById('editNombre').value.trim(),
-                apellido_p: document.getElementById('editApPaterno').value.trim(),
-                apellido_m: document.getElementById('editApMaterno').value.trim(),
-                id_cargo: document.getElementById('editCargo').value
+    // --- ABRIR MODAL DE EDICIÓN ---
+    function abrirEdicion(id) {
+        document.getElementById('editId').value = id;
+        document.getElementById('editNombre').value = document.getElementById('nom-' + id).innerText;
+        document.getElementById('editApPaterno').value = document.getElementById('app-' + id).innerText;
+        document.getElementById('editApMaterno').value = document.getElementById('apm-' + id).innerText;
+        document.getElementById('editCargo').value = document.getElementById('car-' + id).getAttribute('data-idcargo');
+
+        let fotoActual = document.getElementById('raw-foto-' + id).value;
+        document.getElementById('editPreviewImg').src = fotoActual ? fotoActual : 'https://via.placeholder.com/100?text=Sin+Foto';
+        document.getElementById('editFoto').value = '';
+
+        document.getElementById('modalEditar').style.display = 'flex';
+        // Enfocar automáticamente el primer campo
+        setTimeout(() => document.getElementById('editNombre').focus(), 100);
+    }
+
+    function cerrarEdicion() {
+        document.getElementById('modalEditar').style.display = 'none';
+    }
+
+    function previsualizarEditFoto(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('editPreviewImg').src = e.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function leerFotoBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const MAX_WIDTH = 300;
+                    const MAX_HEIGHT = 300;
+                    let width = img.width;
+                    let height = img.height;
+                    if (width > height) {
+                        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                    } else {
+                        if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    ctx.drawImage(img, 0, 0, width, height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.7));
+                };
+                img.onerror = error => reject(error);
             };
+            reader.onerror = error => reject(error);
+            reader.readAsDataURL(file);
+        });
+    }
 
-            if (!datos.nombre || !datos.apellido_p) {
-                await mostrarAlerta("Nombre y Apellido Paterno son obligatorios.", '⚠️');
-                return;
-            }
+    async function guardarEdicion() {
+        let id = document.getElementById('editId').value;
+        let fotoInput = document.getElementById('editFoto').files[0];
 
-            if (fotoInput) {
-                datos.foto = await leerFotoBase64(fotoInput);
-            }
+        let datos = {
+            id_empleado: id,
+            nombre: document.getElementById('editNombre').value.trim(),
+            apellido_p: document.getElementById('editApPaterno').value.trim(),
+            apellido_m: document.getElementById('editApMaterno').value.trim(),
+            id_cargo: document.getElementById('editCargo').value
+        };
 
-            try {
-                let req = await fetch('actualizar_empleado.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(datos)
-                });
-                let res = await req.json();
-                
-                if (res.status === 'success') {
-                    await mostrarAlerta("Datos actualizados correctamente.", '✅');
-                    location.reload(); 
-                } else {
-                    await mostrarAlerta("Error: " + res.message, '❌');
-                }
-            } catch(e) {
-                await mostrarAlerta("Error de conexión al actualizar.", '❌');
-            }
+        if (!datos.nombre || !datos.apellido_p) {
+            await mostrarAlerta("Nombre y Apellido Paterno son obligatorios.", '⚠️');
+            return;
         }
-    </script>
+
+        if (fotoInput) {
+            datos.foto = await leerFotoBase64(fotoInput);
+        }
+
+        try {
+            let req = await fetch('actualizar_empleado.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(datos)
+            });
+            let res = await req.json();
+
+            if (res.status === 'success') {
+                await mostrarAlerta("Datos actualizados correctamente.", '✅');
+                location.reload();
+            } else {
+                await mostrarAlerta("Error: " + res.message, '❌');
+            }
+        } catch(e) {
+            await mostrarAlerta("Error de conexión al actualizar.", '❌');
+        }
+    }
+</script>
 </body>
 </html>

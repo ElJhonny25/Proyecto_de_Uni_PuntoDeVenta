@@ -326,7 +326,9 @@
                         <div class="bold" style="text-align: right; font-size: 14px;">TOTAL: $${parseFloat(res.total).toFixed(2)}</div>
                         <div class="dashed-line"></div>
                         <div class="center" style="font-size: 9px;">*** NO FISCAL ***<br>Favor de pasar a caja a liquidar</div>
-                    </body>
+                   <br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+                   .
+                        </body>
                     </html>
                 `;
 
@@ -446,43 +448,52 @@
             document.querySelectorAll('.area-layer').forEach(layer => { if(layer.id === 'layer-' + nombreArea) layer.classList.add('active'); else layer.classList.remove('active'); });
         }
 
-        function agregarArea() { 
-            const n = prompt("Ingresa el nombre de la nueva área:"); 
-            if (n && n.trim() !== "") { 
-                if(document.getElementById('layer-' + n)) return alert("Área ya existe."); 
-                const b = document.createElement('button'); 
-                b.classList.add('tab-btn'); 
-                b.innerText = n; 
-                b.setAttribute('draggable', true); b.style.cursor = 'move'; 
-                b.onclick = function() { cambiarArea(n); }; 
-                areasContainer.appendChild(b); 
-                const l = document.createElement('div'); l.classList.add('area-layer'); l.id = 'layer-' + n; floorPlan.appendChild(l); 
-                cambiarArea(n); guardarComedor(); 
-            } 
-        }
-        function eliminarAreaActiva() {
-            const activeTab = document.querySelector('.tab-btn.active');
-            if (!activeTab) return;
-            
-            const nombreArea = activeTab.innerText;
-            
-            if (nombreArea === 'Comedor Principal') { 
-                alert("🔒 Protección: No puedes eliminar el área predeterminada 'Comedor Principal'."); 
-                return; 
-            }
-            
-            if (confirm(`⚠️ ¿Estás seguro de que deseas eliminar el área '${nombreArea}' y TODAS las mesas que contiene?`)) {
-                activeTab.remove(); 
-                
-                const layer = document.getElementById('layer-' + nombreArea);
-                if (layer) layer.remove(); 
-                
-                cambiarArea('Comedor Principal'); 
-                guardarComedor(); 
-            }
-        }
+        async function agregarArea() { 
+    const n = await mostrarPrompt("Ingresa el nombre de la nueva área:", '➕');
+    if (!n || n.trim() === "") return;
+    const nombre = n.trim();
+    if (document.getElementById('layer-' + nombre)) {
+        await mostrarAlerta("Ya existe un área con ese nombre.", '⚠️');
+        return;
+    }
+    // Crear botón de pestaña
+    const b = document.createElement('button'); 
+    b.className = 'tab-btn'; 
+    b.innerText = nombre; 
+    b.setAttribute('draggable', true); 
+    b.style.cursor = 'move'; 
+    b.onclick = function() { cambiarArea(nombre); }; 
+    areasContainer.appendChild(b); 
+    // Crear capa de área
+    const l = document.createElement('div'); 
+    l.className = 'area-layer'; 
+    l.id = 'layer-' + nombre; 
+    floorPlan.appendChild(l); 
+    // Activar la nueva área
+    cambiarArea(nombre);
+    guardarComedor();
+    await mostrarAlerta('Área creada correctamente.', '✅');
+}
 
-       /*function eliminarMesaSeleccionada() {
+        async function eliminarAreaActiva() {
+    const activeTab = document.querySelector('.tab-btn.active');
+    if (!activeTab) return;
+    const nombreArea = activeTab.innerText;
+    if (nombreArea === 'Comedor Principal') { 
+        await mostrarAlerta("🔒 Protección: No puedes eliminar el área predeterminada 'Comedor Principal'.", '⚠️'); 
+        return; 
+    }
+    const confirmado = await mostrarConfirm(`⚠️ ¿Estás seguro de que deseas eliminar el área '${nombreArea}' y TODAS las mesas que contiene?`);
+    if (!confirmado) return;
+    activeTab.remove(); 
+    const layer = document.getElementById('layer-' + nombreArea);
+    if (layer) layer.remove(); 
+    cambiarArea('Comedor Principal'); 
+    guardarComedor();
+    await mostrarAlerta('Área eliminada correctamente.', '🗑️');
+}
+
+       function eliminarMesaSeleccionada() {
             if (mesaSeleccionada) {
                 if (!mesaSeleccionada.classList.contains('libre')) {
                     alert("⛔ OPERACIÓN DENEGADA\nNo puedes eliminar una mesa que está Ocupada (Roja) o con Cuenta Pendiente (Amarilla).\nDebes cobrarla o liberarla antes de eliminarla del plano.");
@@ -497,18 +508,54 @@
             } else {
                 alert("Selecciona una mesa haciendo clic sobre ella primero.");
             }
-        }*/
-       async function eliminarMesaSeleccionada() {
-    // ...
+        }
+     async function eliminarMesaSeleccionada() {
+    if (!mesaSeleccionada) {
+        await mostrarAlerta("Selecciona una mesa haciendo clic sobre ella primero.", '⚠️');
+        return;
+    }
+    if (!mesaSeleccionada.classList.contains('libre')) {
+        await mostrarAlerta("⛔ OPERACIÓN DENEGADA\nNo puedes eliminar una mesa que está Ocupada (Roja) o con Cuenta Pendiente (Amarilla).\nDebes cobrarla o liberarla antes de eliminarla del plano.", '⛔');
+        return;
+    }
     const confirmado = await mostrarConfirm("¿Eliminar mesa " + mesaSeleccionada.innerText + "?");
     if (confirmado) {
         mesaSeleccionada.remove(); 
         mesaSeleccionada = null; 
-        guardarComedor(); 
+        guardarComedor();
+        await mostrarAlerta('Mesa eliminada correctamente.', '🗑️');
     }
 }
 
-        function agregarMesa() { const c = document.querySelector('.area-layer.active'); if(!c) return alert("Selecciona un área."); let n = prompt("Identificador de la mesa:"); if (!n || n.trim() === "") return; n = n.trim(); let e = false; c.querySelectorAll('.mesa').forEach(m => { if(m.innerText === n) e = true; }); if(e) return alert("Mesa ya existe."); const m = document.createElement('div'); m.classList.add('mesa', 'libre'); m.style.left = '200px'; m.style.top = '200px'; m.style.cursor = isEditing ? 'grab' : 'pointer'; m.innerText = n; c.appendChild(m); quitarSeleccionMesas(); m.classList.add('selected'); mesaSeleccionada = m; guardarComedor(); }
+        async function agregarMesa() {
+    const capa = document.querySelector('.area-layer.active');
+    if (!capa) {
+        await mostrarAlerta("Selecciona un área primero.", '⚠️');
+        return;
+    }
+    const n = await mostrarPrompt("Identificador de la mesa:", '🪑');
+    if (!n || n.trim() === "") return;
+    const nombre = n.trim();
+    // Verificar si ya existe
+    let existe = false;
+    capa.querySelectorAll('.mesa').forEach(m => { if (m.innerText === nombre) existe = true; });
+    if (existe) {
+        await mostrarAlerta("Ya existe una mesa con ese identificador.", '⚠️');
+        return;
+    }
+    const m = document.createElement('div');
+    m.className = 'mesa libre';
+    m.style.left = '200px';
+    m.style.top = '200px';
+    m.style.cursor = isEditing ? 'grab' : 'pointer';
+    m.innerText = nombre;
+    capa.appendChild(m);
+    quitarSeleccionMesas();
+    m.classList.add('selected');
+    mesaSeleccionada = m;
+    guardarComedor();
+    await mostrarAlerta('Mesa agregada correctamente.', '✅');
+}
         function quitarSeleccionMesas() { document.querySelectorAll('.mesa').forEach(m => m.classList.remove('selected')); mesaSeleccionada = null; }
 
         // --- DRAG AND DROP (Arrastrar Pestañas) ---

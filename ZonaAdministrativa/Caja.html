@@ -337,7 +337,9 @@
                     <div class="total-area bold" style="text-align: right;">TOTAL: $${parseFloat(totalAPagar).toFixed(2)}</div>
                     <div class="dashed-line"></div>
                     <div class="center" style="font-size: 9px;">*** NO FISCAL ***<br>¡Gracias por su preferencia!</div>
-                </body>
+                    <br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+                    .....
+                    </body>
                 </html>
             `;
             
@@ -367,6 +369,8 @@
                 actualizandoMesas = false; 
                 cargarMesasPendientes(); 
             }, 500);
+
+            document.getElementById('inputRecibido').focus();
         }
 
         async function procesarCobroFinal() {
